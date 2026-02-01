@@ -46,11 +46,11 @@ export interface ImportTransaction {
    */
   imported_id?: string;
   cleared?: boolean;
-  subtransactions?: {
+  subtransactions?: Array<{
     amount: number;
     category?: string;
     notes?: string;
-  }[];
+  }>;
 }
 
 export type BridgeContext =

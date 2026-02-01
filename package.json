@@ -2,6 +2,7 @@
   "name": "@righteffort/actual-ext-bridge",
   "version": "0.0.1",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "description": "Library to facilitate browser extensions that interact with Actual Budget",
   "author": "Ted Romer <tromer@gmail.com>",
   "license": "MIT",

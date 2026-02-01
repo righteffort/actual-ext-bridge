@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-declare module '*?inline-js' {
+declare module "*?inline-js" {
   const content: string;
   export default content;
 }
