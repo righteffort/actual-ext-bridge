@@ -12,48 +12,55 @@ describe("LocalBridge", () => {
   const baseUrl = "https://actual.test";
 
   beforeEach(() => {
-    // Setup DOM environment
     document.head.innerHTML = "";
     bridge = new LocalBridge();
 
     // Mock window.postMessage to intercept bridge messages
     const mockPostMessage = vi.fn((message: any, targetOrigin: string) => {
-      // Manually trigger our test listener with the correct origin
       const event = new MessageEvent("message", {
         data: message,
         origin: targetOrigin,
         source: window,
       });
-
       setTimeout(() => {
         window.dispatchEvent(event);
       }, 0);
     });
-
-    // Cast to avoid TypeScript overload issues
     window.postMessage = mockPostMessage as any;
   });
+
+  let messageHandlers: ((event: MessageEvent) => void)[] = [];
 
   afterEach(() => {
     bridge.disconnect();
     vi.restoreAllMocks();
+    // Clean up all message handlers registered during tests
+    messageHandlers.forEach(handler => {
+      window.removeEventListener('message', handler);
+    });
+    messageHandlers = [];
   });
 
-  it("should inject the guest script on connect", async () => {
-    // Helper to create proper MessageEvent with correct origin
-    const mockMessageEvent = (data: any) => {
-      const event = new MessageEvent("message", {
-        data,
-        origin: baseUrl,
-        source: window,
-      });
-      setTimeout(() => {
-        window.dispatchEvent(event);
-      }, 0);
-    };
+  // Helper function to register and track message handlers
+  const addMessageHandler = (handler: (event: MessageEvent) => void) => {
+    messageHandlers.push(handler);
+    window.addEventListener('message', handler);
+  };
 
-    // Simulate the Guest responding to HANDSHAKE_INIT
-    window.addEventListener("message", (event) => {
+  // Helper to create proper MessageEvent with correct origin
+  const mockMessageEvent = (data: any) => {
+    const event = new MessageEvent("message", {
+      data,
+      origin: baseUrl,
+      source: window,
+    });
+    setTimeout(() => {
+      window.dispatchEvent(event);
+    }, 0);
+  };
+
+  it("should inject the guest script on connect", async () => {
+    const messageHandler = (event: MessageEvent) => {
       const data = event.data;
       if (data && data.type === HostMessageType.HANDSHAKE_INIT) {
         // Reply with ACK asynchronously to simulate real behavior
@@ -64,7 +71,9 @@ describe("LocalBridge", () => {
           payload: { success: true },
         });
       }
-    });
+    };
+
+    addMessageHandler(messageHandler);
 
     await bridge.connect({ baseUrl });
 
@@ -74,25 +83,11 @@ describe("LocalBridge", () => {
     expect(script!.textContent).toContain("window.postMessage");
   });
 
-  it("should send RPC requests and handle responses", async () => {
-    // Helper to create proper MessageEvent with correct origin
-    const mockMessageEvent = (data: any) => {
-      const event = new MessageEvent("message", {
-        data,
-        origin: baseUrl,
-        source: window,
-      });
-      setTimeout(() => {
-        window.dispatchEvent(event);
-      }, 0);
-    };
-
-    // Auto-reply to everything
-    window.addEventListener("message", (event) => {
+  it("should handle getTransactions", async () => {
+    const messageHandler = (event: MessageEvent) => {
       const data = event.data;
       if (!data || data.source !== "actual-bridge-host") return;
 
-      // Use mockMessageEvent to simulate async message handling with correct origin
       if (data.type === HostMessageType.HANDSHAKE_INIT) {
         mockMessageEvent({
           source: "actual-bridge-guest",
@@ -108,12 +103,75 @@ describe("LocalBridge", () => {
           payload: { success: true, data: [{ id: "tx-1", amount: 100 }] },
         });
       }
-    });
+    };
+
+    addMessageHandler(messageHandler);
 
     await bridge.connect({ baseUrl });
     const txs = await bridge.getTransactions();
 
     expect(txs).toHaveLength(1);
     expect(txs?.[0]?.id).toBe("tx-1");
+  });
+
+  it("should handle getAccounts", async () => {
+    const messageHandler = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.source !== "actual-bridge-host") return;
+
+      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.HANDSHAKE_ACK,
+          id: data.id,
+          payload: { success: true },
+        });
+      } else if (data.type === HostMessageType.GET_ACCOUNTS) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.COMMAND_RESPONSE,
+          id: data.id,
+          payload: { success: true, data: [{ id: "acc-1", name: "Checking" }] },
+        });
+      }
+    };
+
+    addMessageHandler(messageHandler);
+
+    await bridge.connect({ baseUrl });
+    const accounts = await bridge.getAccounts();
+
+    expect(accounts).toHaveLength(1);
+    expect(accounts?.[0]?.name).toBe("Checking");
+  });
+
+  it("should getAccountByName", async () => {
+    const messageHandler = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.source !== "actual-bridge-host") return;
+
+      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.HANDSHAKE_ACK,
+          id: data.id,
+          payload: { success: true },
+        });
+      } else if (data.type === HostMessageType.GET_ACCOUNTS) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.COMMAND_RESPONSE,
+          id: data.id,
+          payload: { success: true, data: [{ id: "acc-1", name: "Savings" }] },
+        });
+      }
+    };
+
+    addMessageHandler(messageHandler);
+
+    await bridge.connect({ baseUrl });
+    const account = await bridge.getAccountByName("savings"); // Case insensitive
+    expect(account).toBeTruthy();
+    expect(account?.id).toBe("acc-1");
   });
 });
