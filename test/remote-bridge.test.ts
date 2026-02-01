@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { RemoteBridge } from "../src/core/remote-bridge";
 import {
   ARBITER_MESSAGE_TYPE,

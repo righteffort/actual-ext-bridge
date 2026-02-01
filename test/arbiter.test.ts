@@ -42,6 +42,10 @@ describe("BridgeArbiter", () => {
     onMessageListeners.forEach((fn) => fn(msg, sender, () => {}));
 
     expect(arbiter.getPrimaryId()).toBe(100);
+    
+    // Wait for async broadcastChange to complete
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
     // Should broadcast
     expect(tabSendMessageSpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -58,10 +62,15 @@ describe("BridgeArbiter", () => {
     arbiter.setPrimary(100);
     expect(arbiter.getPrimaryId()).toBe(100);
 
+    // Wait for initial broadcast to complete
+    await vi.runOnlyPendingTimersAsync();
+
     // Wait > 5s
     vi.advanceTimersByTime(6000);
+    await vi.runOnlyPendingTimersAsync();
 
     expect(arbiter.getPrimaryId()).toBeNull();
+    
     // Should broadcast revocation (null)
     expect(tabSendMessageSpy).toHaveBeenLastCalledWith(
       expect.anything(),
