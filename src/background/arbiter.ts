@@ -61,7 +61,7 @@ export class BridgeArbiter {
     const msg = message as ArbiterMessageInterface;
 
     // Allow simple ID request without strict typing if needed
-    if (!msg || typeof msg !== "object") return;
+    if (!msg || typeof msg !== "object") return undefined;
 
     // Handle "Who Am I?" request from content scripts
     if (msg.action === ArbiterMessageTypeEnum.GET_TAB_ID) {
@@ -69,7 +69,7 @@ export class BridgeArbiter {
     }
 
     // Strict protocol check for other messages
-    if (msg.type !== ARBITER_MESSAGE_TYPE_CONST) return;
+    if (msg.type !== ARBITER_MESSAGE_TYPE_CONST) return undefined;
 
     const tabId = sender.tab?.id;
 
@@ -79,14 +79,17 @@ export class BridgeArbiter {
           this.lastHeartbeatTime = Date.now();
           this.monitorHeartbeat();
         }
-        break;
+        return undefined;
 
       case ArbiterMessageTypeEnum.CLAIM_PRIMARY:
         if (tabId) this.setPrimary(tabId);
-        break;
+        return undefined;
 
       case ArbiterMessageTypeEnum.PROXY_REQUEST:
         return this.handleProxyRequest(msg);
+
+      default:
+        return undefined;
     }
   }
 

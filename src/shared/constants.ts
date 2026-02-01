@@ -3,6 +3,7 @@
  */
 
 export const TARGET_ORIGIN_VAR = "__ACTUAL_BRIDGE_TARGET_ORIGIN__";
+export const TEST_ORIGIN = "https://localhost";
 export const SOURCE_GUEST = "actual-bridge-guest";
 export const SOURCE_HOST = "actual-bridge-host";
 

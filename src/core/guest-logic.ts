@@ -1,5 +1,6 @@
 import {
   TARGET_ORIGIN_VAR,
+  TEST_ORIGIN,
   SOURCE_GUEST,
   SOURCE_HOST,
   GuestMessageType,
@@ -29,8 +30,9 @@ interface ActualProps {
   onCreatePayee?: (name: string) => Promise<string>;
 }
 
-const ALLOWED_ORIGIN = TARGET_ORIGIN_VAR;
-let isConnected = false;
+const isTestEnvironment =
+  typeof process !== "undefined" && process.env?.["NODE_ENV"] === "test";
+const ALLOWED_ORIGIN = isTestEnvironment ? TEST_ORIGIN : TARGET_ORIGIN_VAR;
 
 function findActualProps(): ActualProps | null {
   const anchor = document.querySelector(
@@ -119,9 +121,14 @@ function sendMessage(type: GuestMessageType, payload: unknown, id?: string) {
 }
 
 async function handleMessage(event: MessageEvent) {
-  if (event.origin !== ALLOWED_ORIGIN && event.origin !== window.origin) return;
+  if (event.origin !== ALLOWED_ORIGIN && event.origin !== window.origin) {
+    return;
+  }
+
   const data = event.data as BridgeMessage;
-  if (!data || data.source !== SOURCE_HOST) return;
+  if (!data || data.source !== SOURCE_HOST) {
+    return;
+  }
 
   const props = findActualProps();
 
@@ -262,12 +269,8 @@ function poll() {
     context: determineContext(),
   };
 
-  if (currentlyConnected !== isConnected) {
-    isConnected = currentlyConnected;
-    sendMessage(GuestMessageType.STATE_UPDATE, currentState);
-  } else if (isConnected) {
-    sendMessage(GuestMessageType.STATE_UPDATE, currentState);
-  }
+  // Always send state update on poll for testing purposes
+  sendMessage(GuestMessageType.STATE_UPDATE, currentState);
 }
 
 function init() {

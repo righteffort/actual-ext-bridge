@@ -2,7 +2,6 @@ import { defineConfig, Plugin } from "vite";
 import dts from "vite-plugin-dts";
 import esbuild from "esbuild";
 import path from "path";
-import fs from "fs/promises";
 
 /**
  * Custom plugin to compile and inline the Guest Logic script.
@@ -80,8 +79,12 @@ export default defineConfig({
       formats: ["es"]
     },
     rollupOptions: {
-      // Externalize deps that shouldn't be bundled (none for now, as it's a library)
-      external: ["chrome"]
+      external: ["webextension-polyfill"],
+      output: {
+        globals: {
+          "webextension-polyfill": "browser"
+        }
+      }
     }
   }
 });

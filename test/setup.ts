@@ -1,4 +1,4 @@
-import { vi } from "vitest";
+import { vi, beforeEach } from "vitest";
 
 // Mock the chrome/browser namespace globally
 const browserMock = {

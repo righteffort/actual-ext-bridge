@@ -64,13 +64,13 @@ export class BridgeConnector {
     _sender: browser.Runtime.MessageSender,
   ): Promise<unknown> | undefined {
     const msg = message as ArbiterMessage;
-    if (!msg || msg.type !== ARBITER_MESSAGE_TYPE) return;
+    if (!msg || msg.type !== ARBITER_MESSAGE_TYPE) return undefined;
 
     switch (msg.action) {
       case ArbiterMessageType.PRIMARY_CHANGED: {
         const payload = msg.payload as { primaryTabId: number | null };
         void this.handlePrimaryChange(payload.primaryTabId);
-        break;
+        return undefined;
       }
 
       case ArbiterMessageType.PROXY_REQUEST:
@@ -82,6 +82,9 @@ export class BridgeConnector {
             error: "Not Primary or No Bridge",
           });
         }
+
+      default:
+        return undefined;
     }
   }
 
