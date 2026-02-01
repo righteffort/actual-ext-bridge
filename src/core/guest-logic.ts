@@ -48,7 +48,13 @@ function findActualProps(): ActualProps | null {
   let attempts = 0;
   while (fiber && attempts < 50) {
     const props = fiber.memoizedProps as unknown as ActualProps;
-    if (props && Array.isArray(props.transactions) && typeof props.onSave === "function" && Array.isArray(props.accounts) && typeof props.onAdd === "function") {
+    if (
+      props &&
+      Array.isArray(props.transactions) &&
+      typeof props.onSave === "function" &&
+      Array.isArray(props.accounts) &&
+      typeof props.onAdd === "function"
+    ) {
       return props;
     }
     if (fiber.return) {
