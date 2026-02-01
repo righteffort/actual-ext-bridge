@@ -11,6 +11,15 @@ export default defineConfig({
     },
     setupFiles: ['./test/setup.ts'],
     globals: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['html'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+	'src/index.ts',
+	'src/types.ts',
+      ]
+    }
   },
   resolve: {
     alias: {

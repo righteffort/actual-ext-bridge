@@ -30,12 +30,14 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "prettier": "prettier {src,test}/**/*.{js,ts} --check",
     "prettier:fix": "prettier {src,test}/**/*.{js,ts} --write",
-    "test": "yarn vitest"
+    "test": "yarn vitest",
+    "test:cov": "yarn test run --coverage"
   },
   "devDependencies": {
     "@types/jsdom": "^27",
     "@types/node": "^25.1.0",
     "@types/webextension-polyfill": "^0.12.4",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.39.2",
     "jsdom": "^27.4.0",
     "prettier": "^3.8.1",
