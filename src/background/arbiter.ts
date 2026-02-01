@@ -3,14 +3,7 @@
  * Enforces the Single Master policy across multiple Actual Budget tabs.
  */
 import browser from "webextension-polyfill";
-import {
-  ARBITER_MESSAGE_TYPE,
-  ArbiterMessageType,
-  type ArbiterMessage,
-} from "./arbiter"; // Self-referencing for types? No, I should define types here or importing from constants if moved.
-// Wait, the previous file had the types IN IT. I will keep them here.
 
-// Re-defining for self-containment as per previous file structure
 export const ARBITER_MESSAGE_TYPE_CONST = "ACTUAL_BRIDGE_ARBITER";
 
 export enum ArbiterMessageTypeEnum {
