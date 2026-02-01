@@ -175,4 +175,70 @@ describe("LocalBridge", () => {
     expect(account).toBeTruthy();
     expect(account?.id).toBe("acc-1");
   });
+
+  it("should handle saveTransaction", async () => {
+    const messageHandler = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.source !== "actual-bridge-host") return;
+
+      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.HANDSHAKE_ACK,
+          id: data.id,
+          payload: { success: true },
+        });
+      } else if (data.type === HostMessageType.SAVE_TRANSACTION) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.COMMAND_RESPONSE,
+          id: data.id,
+          payload: { success: true },
+        });
+      }
+    };
+
+    addMessageHandler(messageHandler);
+
+    await bridge.connect({ baseUrl });
+    
+    const transaction = {
+      id: "tx-123",
+      account: "acc-1",
+      amount: 100,
+      date: "2024-01-01",
+    };
+
+    await expect(bridge.saveTransaction(transaction)).resolves.toBeUndefined();
+  });
+
+  it("should throw error when saveTransaction called without transaction ID", async () => {
+    const messageHandler = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.source !== "actual-bridge-host") return;
+
+      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.HANDSHAKE_ACK,
+          id: data.id,
+          payload: { success: true },
+        });
+      }
+    };
+
+    addMessageHandler(messageHandler);
+
+    await bridge.connect({ baseUrl });
+    
+    const transactionWithoutId = {
+      account: "acc-1",
+      amount: 100,
+      date: "2024-01-01",
+    };
+
+    await expect(bridge.saveTransaction(transactionWithoutId as any)).rejects.toThrow(
+      "Transaction ID required for save."
+    );
+  });
 });
