@@ -4,6 +4,7 @@ import {
   ArbiterMessageType,
   ARBITER_MESSAGE_TYPE,
 } from "../src/background/arbiter";
+import browser from "webextension-polyfill";
 
 describe("BridgeArbiter", () => {
   let arbiter: BridgeArbiter;
@@ -12,15 +13,13 @@ describe("BridgeArbiter", () => {
 
   beforeEach(() => {
     onMessageListeners = [];
-    // @ts-ignore
-    global.browser.runtime.onMessage.addListener = (fn) =>
-      onMessageListeners.push(fn);
+    browser.runtime.onMessage.addListener = vi.fn((fn) =>
+      onMessageListeners.push(fn)
+    );
 
     tabSendMessageSpy = vi.fn().mockResolvedValue({});
-    // @ts-ignore
-    global.browser.tabs.sendMessage = tabSendMessageSpy;
-    // @ts-ignore
-    global.browser.tabs.query = vi
+    browser.tabs.sendMessage = tabSendMessageSpy;
+    browser.tabs.query = vi
       .fn()
       .mockResolvedValue([{ id: 1 }, { id: 2 }]);
 

@@ -4,6 +4,7 @@ import {
   ARBITER_MESSAGE_TYPE,
   ArbiterMessageType,
 } from "../src/background/arbiter";
+import browser from "webextension-polyfill";
 
 describe("BridgeConnector", () => {
   let connector: BridgeConnector;
@@ -13,13 +14,12 @@ describe("BridgeConnector", () => {
   beforeEach(() => {
     onMessageListeners = [];
     // Mock browser runtime
-    // @ts-ignore
-    global.browser.runtime.onMessage.addListener = (fn) =>
-      onMessageListeners.push(fn);
+    browser.runtime.onMessage.addListener = vi.fn((fn) =>
+      onMessageListeners.push(fn)
+    );
 
     sendMessageSpy = vi.fn().mockResolvedValue({});
-    // @ts-ignore
-    global.browser.runtime.sendMessage = sendMessageSpy;
+    browser.runtime.sendMessage = sendMessageSpy;
 
     connector = new BridgeConnector();
   });
