@@ -1,29 +1,22 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RemoteBridge } from "../src/core/remote-bridge";
 import {
   ARBITER_MESSAGE_TYPE,
   ArbiterMessageType,
 } from "../src/background/arbiter";
+import browser from "webextension-polyfill";
 
 describe("RemoteBridge", () => {
   let bridge: RemoteBridge;
-  let sendMessageSpy: any;
 
   beforeEach(() => {
     bridge = new RemoteBridge();
-    sendMessageSpy = vi.fn().mockResolvedValue({ success: true, data: null });
-    // @ts-ignore
-    global.browser.runtime.sendMessage = sendMessageSpy;
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   it("should proxy method calls to Arbiter", async () => {
     await bridge.getAccounts();
 
-    expect(sendMessageSpy).toHaveBeenCalledWith(
+    expect(browser.runtime.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         type: ARBITER_MESSAGE_TYPE,
         action: ArbiterMessageType.PROXY_REQUEST,
@@ -36,7 +29,7 @@ describe("RemoteBridge", () => {
   });
 
   it("should handle proxy errors", async () => {
-    sendMessageSpy.mockResolvedValue({
+    browser.runtime.sendMessage.mockResolvedValue({
       success: false,
       error: "Remote Error",
     });
@@ -49,7 +42,8 @@ describe("RemoteBridge", () => {
       { id: "1", amount: 100 },
       { id: "2", amount: 200 },
     ];
-    sendMessageSpy.mockResolvedValue({ success: true, data: mockTxs });
+    
+    browser.runtime.sendMessage.mockResolvedValue({ success: true, data: mockTxs });
 
     const result = await bridge.getTransactions((t) => t.amount > 150);
     expect(result).toHaveLength(1);

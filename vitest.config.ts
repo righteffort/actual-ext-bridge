@@ -12,4 +12,9 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     globals: true,
   },
+  resolve: {
+    alias: {
+      'webextension-polyfill': new URL('./test/mocks/webextension-polyfill.js', import.meta.url).pathname,
+    },
+  },
 });
