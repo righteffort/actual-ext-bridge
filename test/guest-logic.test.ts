@@ -10,7 +10,10 @@ import {
 } from "../src/shared/constants";
 
 // Helper to construct a Fiber Node mock
-function createFiber(props: any, returnFiber: any = null) {
+function createFiber(
+  props: Record<string, unknown>,
+  returnFiber: Record<string, unknown> | null = null,
+) {
   return {
     memoizedProps: props,
     return: returnFiber,
@@ -19,7 +22,7 @@ function createFiber(props: any, returnFiber: any = null) {
 }
 
 describe("Guest Logic", () => {
-  let postMessageSpy: any;
+  let postMessageSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.resetModules(); // Vital to re-execute the module init
@@ -64,7 +67,8 @@ describe("Guest Logic", () => {
 
     // Setup DOM
     document.body.innerHTML = `<div class="recs-table-row"></div>`;
-    const anchor = document.querySelector(".recs-table-row") as any;
+    const anchor = document.querySelector(".recs-table-row") as HTMLElement &
+      Record<string, unknown>;
 
     // Note: The logic searches for keys starting with __reactFiber
     const key = "__reactFiber" + Math.random().toString(36).slice(2);
@@ -101,7 +105,8 @@ describe("Guest Logic", () => {
 
     // Setup DOM
     document.body.innerHTML = `<div class="recs-table-row"></div>`;
-    const anchor = document.querySelector(".recs-table-row") as any;
+    const anchor = document.querySelector(".recs-table-row") as HTMLElement &
+      Record<string, unknown>;
     const key = "__reactFiberTest";
     anchor[key] = createFiber(props);
 
@@ -161,7 +166,8 @@ describe("Guest Logic", () => {
     };
 
     document.body.innerHTML = `<div class="recs-table-row"></div>`;
-    const anchor = document.querySelector(".recs-table-row") as any;
+    const anchor = document.querySelector(".recs-table-row") as HTMLElement &
+      Record<string, unknown>;
     const key = "__reactFiberTest";
     anchor[key] = createFiber(props);
 

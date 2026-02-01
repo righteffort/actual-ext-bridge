@@ -16,7 +16,7 @@ describe("LocalBridge", () => {
     bridge = new LocalBridge();
 
     // Mock window.postMessage to intercept bridge messages
-    const mockPostMessage = vi.fn((message: any, targetOrigin: string) => {
+    const mockPostMessage = vi.fn((message: unknown, targetOrigin: string) => {
       const event = new MessageEvent("message", {
         data: message,
         origin: targetOrigin,
@@ -26,7 +26,8 @@ describe("LocalBridge", () => {
         window.dispatchEvent(event);
       }, 0);
     });
-    window.postMessage = mockPostMessage as any;
+    window.postMessage =
+      mockPostMessage as unknown as typeof window.postMessage;
   });
 
   let messageHandlers: ((event: MessageEvent) => void)[] = [];
@@ -48,7 +49,7 @@ describe("LocalBridge", () => {
   };
 
   // Helper to create proper MessageEvent with correct origin
-  const mockMessageEvent = (data: any) => {
+  const mockMessageEvent = (data: unknown) => {
     const event = new MessageEvent("message", {
       data,
       origin: baseUrl,
@@ -80,7 +81,7 @@ describe("LocalBridge", () => {
     // Verify script tag was created
     const script = document.head.querySelector("script");
     expect(script).toBeTruthy();
-    expect(script!.textContent).toContain("window.postMessage");
+    expect(script?.textContent).toContain("window.postMessage");
   });
 
   it("should handle getTransactions", async () => {
