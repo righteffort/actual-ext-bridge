@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { RemoteBridge } from "../src/core/remote-bridge";
 import {
   ARBITER_MESSAGE_TYPE,
   ArbiterMessageType,
 } from "../src/background/arbiter";
 import browser from "webextension-polyfill";
+
+vi.mock("webextension-polyfill");
 
 describe("RemoteBridge", () => {
   let bridge: RemoteBridge;
@@ -29,7 +31,7 @@ describe("RemoteBridge", () => {
   });
 
   it("should handle proxy errors", async () => {
-    browser.runtime.sendMessage.mockResolvedValue({
+    vi.mocked(browser.runtime.sendMessage).mockResolvedValue({
       success: false,
       error: "Remote Error",
     });
@@ -43,7 +45,7 @@ describe("RemoteBridge", () => {
       { id: "2", amount: 200 },
     ];
 
-    browser.runtime.sendMessage.mockResolvedValue({
+    vi.mocked(browser.runtime.sendMessage).mockResolvedValue({
       success: true,
       data: mockTxs,
     });
