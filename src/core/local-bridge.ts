@@ -194,9 +194,13 @@ export class LocalBridge implements ActualBridge {
   }
 
   private handleMessage(event: MessageEvent) {
-    if (event.origin !== this.baseUrl) return;
+    if (event.origin !== this.baseUrl) {
+      return;
+    }
     const data = event.data as BridgeMessage;
-    if (!data || data.source !== SOURCE_GUEST) return;
+    if (!data || data.source !== SOURCE_GUEST) {
+      return;
+    }
 
     switch (data.type) {
       case GuestMessageType.STATE_UPDATE:
