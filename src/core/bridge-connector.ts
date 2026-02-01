@@ -7,7 +7,7 @@ import {
 import type { LocalBridge } from "./local-bridge";
 
 export class BridgeConnector {
-  private isPrimary: boolean = false;
+  private isPrimary = false;
   private myTabId: number | null = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private listeners = new Set<(isPrimary: boolean) => void>();
@@ -62,7 +62,7 @@ export class BridgeConnector {
   private handleRuntimeMessage(
     message: unknown,
     _sender: browser.Runtime.MessageSender,
-  ): Promise<unknown> | void {
+  ): Promise<unknown> | undefined {
     const msg = message as ArbiterMessage;
     if (!msg || msg.type !== ARBITER_MESSAGE_TYPE) return;
 
@@ -135,7 +135,6 @@ export class BridgeConnector {
       // @ts-expect-error - Dynamic dispatch
       if (typeof this.localBridge[req.method] === "function") {
         // @ts-expect-error - Dynamic dispatch
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const result = await this.localBridge[req.method](...req.args);
         return { success: true, data: result };
       } else {

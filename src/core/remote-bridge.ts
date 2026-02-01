@@ -62,7 +62,7 @@ export class RemoteBridge implements ActualBridge {
       try {
         const s = await this.proxyCall<BridgeState>("state", []);
         callback(s);
-      } catch (_e) {
+      } catch {
         callback({
           connected: false,
           context: { type: "UNKNOWN", accountId: null },

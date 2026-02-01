@@ -24,7 +24,7 @@ export interface ArbiterMessageInterface<T = unknown> {
 
 export class BridgeArbiter {
   private primaryTabId: number | null = null;
-  private lastHeartbeatTime: number = 0;
+  private lastHeartbeatTime = 0;
   private heartbeatTimeout: NodeJS.Timeout | null = null;
   private static readonly TIMEOUT_MS = 5000;
 
@@ -57,7 +57,7 @@ export class BridgeArbiter {
   private handleMessage(
     message: unknown,
     sender: browser.Runtime.MessageSender,
-  ): Promise<unknown> | void {
+  ): Promise<unknown> | undefined {
     const msg = message as ArbiterMessageInterface;
 
     // Allow simple ID request without strict typing if needed
@@ -122,13 +122,17 @@ export class BridgeArbiter {
     browser.tabs.query({}).then((tabs) => {
       for (const tab of tabs) {
         if (tab.id) {
-          browser.tabs.sendMessage(tab.id, msg).catch(() => {});
+          browser.tabs.sendMessage(tab.id, msg).catch(() => {
+            // Ignore errors when sending to tabs
+          });
         }
       }
     });
 
     // Also notify UI (Side Panel)
-    browser.runtime.sendMessage(msg).catch(() => {});
+    browser.runtime.sendMessage(msg).catch(() => {
+      // Ignore errors when sending to UI
+    });
   }
 
   private async handleProxyRequest(
