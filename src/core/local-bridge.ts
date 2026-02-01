@@ -12,23 +12,21 @@ import {
   SOURCE_HOST,
   TARGET_ORIGIN_VAR,
 } from "../shared/constants";
-import type { BridgeState, ImportTransaction, Transaction } from "../types";
+import type {
+  BridgeState,
+  ImportTransaction,
+  Transaction,
+  Account,
+  ActualBridge,
+} from "../types";
 
-// This import is handled by the custom Vite plugin.
-// It resolves to a string containing the minified IIFE of guest-logic.ts.
 // @ts-expect-error - The plugin creates this virtual module
 import guestLogicScript from "./guest-logic.ts?inline-js";
 
-/**
- * The Host-side bridge implementation running in the Content Script (Isolated World).
- * Manages the injection of the guest logic and proxies messages.
- */
-export class LocalBridge {
+export class LocalBridge implements ActualBridge {
   private internalState: BridgeState = {
     connected: false,
     context: { type: "UNKNOWN", accountId: null },
-    transactions: null,
-    accounts: null,
   };
   private listeners = new Set<(state: BridgeState) => void>();
   private pendingRequests = new Map<
@@ -41,37 +39,17 @@ export class LocalBridge {
     this.handleMessage = this.handleMessage.bind(this);
   }
 
-  /**
-   * Establishes the connection to the Actual Budget Main World.
-   * Injects the driver script.
-   */
   public async connect(config: { baseUrl: string }): Promise<void> {
-    if (this.baseUrl) {
-      // Already connected or connecting, but we allow reconfiguration
-      console.warn("LocalBridge: Re-connecting or already connected.");
-    }
     this.baseUrl = config.baseUrl;
-
-    // 1. Setup Listener
     window.addEventListener("message", this.handleMessage);
-
-    // 2. Prepare Script
-    // Replace the magic string with the actual authorized origin
     const scriptContent = (guestLogicScript as string).replace(
       TARGET_ORIGIN_VAR,
       this.baseUrl,
     );
-
-    // 3. Inject
     const script = document.createElement("script");
     script.textContent = scriptContent;
-    script.onload = () => script.remove(); // Clean up DOM
+    script.onload = () => script.remove();
     (document.head || document.documentElement).appendChild(script);
-
-    // 4. Wait for Handshake (optional, but good practice to verify)
-    // We send an INIT message and wait for ACK.
-    // However, the guest logic starts polling immediately.
-    // We'll rely on the first state update or handshake ack.
 
     try {
       await this.send(HostMessageType.HANDSHAKE_INIT, {});
@@ -85,7 +63,6 @@ export class LocalBridge {
 
   public subscribe(callback: (state: BridgeState) => void): () => void {
     this.listeners.add(callback);
-    // Send current state immediately
     callback(this.internalState);
     return () => this.listeners.delete(callback);
   }
@@ -94,12 +71,42 @@ export class LocalBridge {
     return this.internalState;
   }
 
-  public async getTransactions(): Promise<Transaction[] | null> {
-    const response = await this.send<Transaction[]>(
+  // --- RPC Methods ---
+
+  /**
+   * Fetches all transactions, optionally filtering them on the client side.
+   */
+  public async getTransactions(
+    predicate?: (t: Transaction) => boolean,
+  ): Promise<Transaction[] | null> {
+    const all = await this.send<Transaction[]>(
       HostMessageType.GET_TRANSACTIONS,
       {},
     );
-    return response || null;
+    if (!all) return null;
+    if (predicate) {
+      return all.filter(predicate);
+    }
+    return all;
+  }
+
+  public async getAccounts(): Promise<Account[] | null> {
+    const accounts = await this.send<Account[]>(
+      HostMessageType.GET_ACCOUNTS,
+      {},
+    );
+    return accounts || null;
+  }
+
+  /**
+   * Helper: Fetches all accounts and finds one by name (case-insensitive).
+   */
+  public async getAccountByName(name: string): Promise<Account | null> {
+    const accounts = await this.getAccounts();
+    if (!accounts) return null;
+    return (
+      accounts.find((a) => a.name.toLowerCase() === name.toLowerCase()) || null
+    );
   }
 
   public async saveTransaction(transaction: Transaction): Promise<void> {
@@ -112,27 +119,19 @@ export class LocalBridge {
     if (!payload.account) {
       throw new BridgeContextError("Account ID is mandatory for creation.");
     }
-
-    // We verify context match to avoid data corruption (writing to wrong account view)
-    // Although the API allows writing to a specific account, the Guest Logic finds handlers
-    // on the *current* view. If we are viewing Account A and try to write to Account B,
-    // using the handlers from Account A's props might be dangerous or impossible.
-    // For safety, we enforce that the View matches the Target Account.
+    // Context check logic preserved
     if (
       this.internalState.context.type === "SINGLE_ACCOUNT" &&
       this.internalState.context.accountId !== payload.account
     ) {
-      // Ideally we would warn, but Actual's internal onAdd might handle it if the data is structured right.
-      // However, strictly adhering to the "User's View" philosophy:
       throw new BridgeContextError(
-        `Current view (Account ${this.internalState.context.accountId}) does not match target account (${payload.account}).`,
+        `Current view (${this.internalState.context.accountId}) matches not target (${payload.account}).`,
       );
     }
 
     try {
       await this.send(HostMessageType.CREATE_TRANSACTION, payload);
     } catch (error: unknown) {
-      // Re-hydrate custom duplicate error
       if (
         typeof error === "object" &&
         error !== null &&
@@ -153,8 +152,6 @@ export class LocalBridge {
     _originalTx: Transaction,
     _splits: Partial<Transaction>[],
   ): Promise<void> {
-    // Not fully implemented in this pass, but structure is here
-    // Logic would be: calculate diff, update originalTx.subtransactions, call saveTransaction
     console.warn("splitTransaction not yet implemented");
     return Promise.resolve();
   }
@@ -162,13 +159,8 @@ export class LocalBridge {
   public disconnect(): void {
     window.removeEventListener("message", this.handleMessage);
     this.listeners.clear();
-    // We cannot easily "un-inject" the guest logic, but we stop listening.
     this.internalState.connected = false;
   }
-
-  // ---------------------------------------------------------------------------
-  // Internal Messaging
-  // ---------------------------------------------------------------------------
 
   private send<T>(type: HostMessageType, payload: unknown): Promise<T> {
     const id = crypto.randomUUID();
@@ -180,7 +172,6 @@ export class LocalBridge {
     };
 
     return new Promise((resolve, reject) => {
-      // Timeout safety
       const timeout = setTimeout(() => {
         if (this.pendingRequests.has(id)) {
           this.pendingRequests.delete(id);
@@ -198,8 +189,6 @@ export class LocalBridge {
           reject(err);
         },
       });
-
-      // Send to Main World
       window.postMessage(msg, this.baseUrl);
     });
   }
@@ -218,13 +207,10 @@ export class LocalBridge {
       case GuestMessageType.HANDSHAKE_ACK:
       case GuestMessageType.COMMAND_RESPONSE:
         if (data.id && this.pendingRequests.has(data.id)) {
-          // Use non-null assertion guard or simple if
           const request = this.pendingRequests.get(data.id);
           if (request) {
             const { resolve, reject } = request;
             this.pendingRequests.delete(data.id);
-
-            // Reconstruct strict response shape
             const response = data.payload as {
               success: boolean;
               data?: unknown;
@@ -236,10 +222,7 @@ export class LocalBridge {
             if (response.success) {
               resolve(response.data);
             } else {
-              // Reconstruct typed error if possible
               if (response.code === "DUPLICATE") {
-                // Pass an object that mimics the error properties so the catch block
-                // in createTransaction can reconstruct the class instance
                 const duplicateInfo = {
                   message: response.error,
                   code: "DUPLICATE",

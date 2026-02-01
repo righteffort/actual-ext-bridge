@@ -1,15 +1,12 @@
-import type { BridgeState, ImportTransaction, Transaction } from "../types";
+import type {
+  BridgeState,
+  ImportTransaction,
+  Transaction,
+  Account,
+  ActualBridge,
+} from "../types";
 
-/**
- * A proxy class for the Extension UI (Popup/Side Panel) to interact with
- * the library. It mimics the `LocalBridge` API but tunnels requests
- * through the Background script to the Content Script.
- */
-export class RemoteBridge {
-  /**
-   * @param tabId The target tab ID to control. If omitted, uses the
-   * current Master tab resolved by the Arbiter.
-   */
+export class RemoteBridge implements ActualBridge {
   constructor(tabId?: number) {
     void tabId;
   }
@@ -19,7 +16,19 @@ export class RemoteBridge {
     return Promise.resolve();
   }
 
-  public async getTransactions(): Promise<Transaction[] | null> {
+  public async getTransactions(
+    predicate?: (t: Transaction) => boolean,
+  ): Promise<Transaction[] | null> {
+    void predicate;
+    return Promise.resolve(null);
+  }
+
+  public async getAccounts(): Promise<Account[] | null> {
+    return Promise.resolve(null);
+  }
+
+  public async getAccountByName(name: string): Promise<Account | null> {
+    void name;
     return Promise.resolve(null);
   }
 
@@ -33,13 +42,19 @@ export class RemoteBridge {
     return Promise.resolve();
   }
 
+  public async splitTransaction(
+    originalTx: Transaction,
+    splits: Partial<Transaction>[],
+  ): Promise<void> {
+    void originalTx;
+    void splits;
+    return Promise.resolve();
+  }
+
   public subscribe(callback: (state: BridgeState) => void): () => void {
-    // Stub: Emit default disconnected state once
     callback({
       connected: false,
       context: { type: "UNKNOWN", accountId: null },
-      transactions: null,
-      accounts: null,
     });
     return () => void 0;
   }
@@ -48,8 +63,10 @@ export class RemoteBridge {
     return {
       connected: false,
       context: { type: "UNKNOWN", accountId: null },
-      transactions: null,
-      accounts: null,
     };
+  }
+
+  public disconnect(): void {
+    // Stub
   }
 }

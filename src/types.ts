@@ -1,6 +1,5 @@
 /**
  * Core type definitions for the Actual Budget Bridge.
- * Aligns with actual-types.ts and api_reference_2.ts.
  */
 
 export interface Transaction {
@@ -18,32 +17,18 @@ export interface Transaction {
   imported_payee?: string;
   cleared?: boolean;
   reconciled?: boolean;
-  // User correction: subtransactions is recursive Transaction[]
   subtransactions?: Transaction[];
 }
 
-/**
- * Represents a transaction object specifically for import/creation operations.
- */
 export interface ImportTransaction {
-  /** Required. The ID of the account this transaction belongs to */
-  account: string; // UUID
-  /** Required. Transaction date in YYYY-MM-DD format */
+  account: string;
   date: string;
-  /** Integer amount (e.g., $120.30 -> 12030) */
   amount?: number;
-  /** UUID of existing payee */
   payee?: string;
-  /** If given, a payee will be created/resolved with this name */
   payee_name?: string;
-  /** Raw description for display purposes */
   imported_payee?: string;
-  category?: string; // UUID
+  category?: string;
   notes?: string;
-  /**
-   * Arbitrary string for deduplication.
-   * If omitted or blank, transaction will not be de-duped.
-   */
   imported_id?: string;
   cleared?: boolean;
   subtransactions?: {
@@ -63,13 +48,41 @@ export interface Account {
   name: string;
 }
 
+/**
+ * LIGHTWEIGHT state snapshot.
+ * Does NOT contain the full lists of transactions or accounts.
+ */
 export interface BridgeState {
-  /** True if the driver is successfully hooked into React internals */
   connected: boolean;
-  /** Details about the current view */
   context: BridgeContext;
-  /** The list of transactions currently loaded in the UI */
-  transactions: Transaction[] | null;
-  /** Available accounts (if visible in the current view/props) */
-  accounts: Account[] | null;
+}
+
+/**
+ * Shared interface for both Local (Content Script) and Remote (Background/UI) bridges.
+ */
+export interface ActualBridge {
+  connect(config: { baseUrl: string }): Promise<void>;
+
+  getTransactions(
+    predicate?: (t: Transaction) => boolean,
+  ): Promise<Transaction[] | null>;
+
+  getAccounts(): Promise<Account[] | null>;
+
+  getAccountByName(name: string): Promise<Account | null>;
+
+  saveTransaction(transaction: Transaction): Promise<void>;
+
+  createTransaction(payload: ImportTransaction): Promise<void>;
+
+  splitTransaction(
+    originalTx: Transaction,
+    splits: Partial<Transaction>[],
+  ): Promise<void>;
+
+  subscribe(callback: (state: BridgeState) => void): () => void;
+
+  state(): BridgeState;
+
+  disconnect?(): void; // Optional on RemoteBridge usually, but good to have
 }
