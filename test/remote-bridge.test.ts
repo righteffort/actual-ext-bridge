@@ -42,8 +42,11 @@ describe("RemoteBridge", () => {
       { id: "1", amount: 100 },
       { id: "2", amount: 200 },
     ];
-    
-    browser.runtime.sendMessage.mockResolvedValue({ success: true, data: mockTxs });
+
+    browser.runtime.sendMessage.mockResolvedValue({
+      success: true,
+      data: mockTxs,
+    });
 
     const result = await bridge.getTransactions((t) => t.amount > 150);
     expect(result).toHaveLength(1);

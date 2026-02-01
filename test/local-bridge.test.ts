@@ -35,8 +35,8 @@ describe("LocalBridge", () => {
     bridge.disconnect();
     vi.restoreAllMocks();
     // Clean up all message handlers registered during tests
-    messageHandlers.forEach(handler => {
-      window.removeEventListener('message', handler);
+    messageHandlers.forEach((handler) => {
+      window.removeEventListener("message", handler);
     });
     messageHandlers = [];
   });
@@ -44,7 +44,7 @@ describe("LocalBridge", () => {
   // Helper function to register and track message handlers
   const addMessageHandler = (handler: (event: MessageEvent) => void) => {
     messageHandlers.push(handler);
-    window.addEventListener('message', handler);
+    window.addEventListener("message", handler);
   };
 
   // Helper to create proper MessageEvent with correct origin

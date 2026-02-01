@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 // Simple mock that creates proper Vitest mock functions
 export default {
