@@ -28,6 +28,7 @@ export class LocalBridge {
     connected: false,
     context: { type: "UNKNOWN", accountId: null },
     transactions: null,
+    accounts: null,
   };
   private listeners = new Set<(state: BridgeState) => void>();
   private pendingRequests = new Map<

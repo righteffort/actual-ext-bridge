@@ -58,6 +58,11 @@ export type BridgeContext =
   | { type: "ALL_ACCOUNTS"; accountId: null }
   | { type: "UNKNOWN"; accountId: null };
 
+export interface Account {
+  id: string;
+  name: string;
+}
+
 export interface BridgeState {
   /** True if the driver is successfully hooked into React internals */
   connected: boolean;
@@ -65,4 +70,6 @@ export interface BridgeState {
   context: BridgeContext;
   /** The list of transactions currently loaded in the UI */
   transactions: Transaction[] | null;
+  /** Available accounts (if visible in the current view/props) */
+  accounts: Account[] | null;
 }

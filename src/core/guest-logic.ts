@@ -11,6 +11,7 @@ import type {
   ImportTransaction,
   BridgeState,
   BridgeContext,
+  Account,
 } from "../types";
 
 /**
@@ -28,6 +29,7 @@ interface FiberNode {
 interface ActualProps {
   transactions?: Transaction[];
   payees?: { id: string; name: string }[];
+  accounts?: Account[];
   onSave?: (tx: unknown) => Promise<void>;
   onAdd?: (txs: unknown[]) => Promise<void>;
   onCreatePayee?: (name: string) => Promise<string>;
@@ -313,6 +315,7 @@ function poll() {
     connected: currentlyConnected,
     context: determineContext(),
     transactions: currentlyConnected ? props.transactions || null : null,
+    accounts: currentlyConnected ? props.accounts || null : null,
   };
 
   if (currentlyConnected !== isConnected) {
