@@ -1,10 +1,10 @@
-import type {
-  BridgeState,
-  ImportTransaction,
-  Transaction,
-  Account,
-  ActualBridge,
-} from "../types";
+import browser from "webextension-polyfill";
+import {
+    ARBITER_MESSAGE_TYPE,
+    ArbiterMessageType,
+    type ArbiterMessage
+} from "../background/arbiter";
+import type { BridgeState, ImportTransaction, Transaction, Account, ActualBridge } from "../types";
 
 export class RemoteBridge implements ActualBridge {
   constructor(tabId?: number) {
@@ -12,51 +12,53 @@ export class RemoteBridge implements ActualBridge {
   }
 
   public async connect(config: { baseUrl: string }): Promise<void> {
-    void config;
-    return Promise.resolve();
+    return this.proxyCall("connect", [config]);
   }
 
   public async getTransactions(
-    predicate?: (t: Transaction) => boolean,
+    predicate?: (t: Transaction) => boolean
   ): Promise<Transaction[] | null> {
-    void predicate;
-    return Promise.resolve(null);
+    const txs = await this.proxyCall<Transaction[] | null>("getTransactions", []);
+    if (txs && predicate) {
+        return txs.filter(predicate);
+    }
+    return txs;
   }
 
   public async getAccounts(): Promise<Account[] | null> {
-    return Promise.resolve(null);
+    return this.proxyCall("getAccounts", []);
   }
 
   public async getAccountByName(name: string): Promise<Account | null> {
-    void name;
-    return Promise.resolve(null);
+    return this.proxyCall("getAccountByName", [name]);
   }
 
   public async saveTransaction(transaction: Transaction): Promise<void> {
-    void transaction;
-    return Promise.resolve();
+    return this.proxyCall("saveTransaction", [transaction]);
   }
 
   public async createTransaction(payload: ImportTransaction): Promise<void> {
-    void payload;
-    return Promise.resolve();
+    return this.proxyCall("createTransaction", [payload]);
   }
 
   public async splitTransaction(
     originalTx: Transaction,
-    splits: Partial<Transaction>[],
+    splits: Partial<Transaction>[]
   ): Promise<void> {
-    void originalTx;
-    void splits;
-    return Promise.resolve();
+    return this.proxyCall("splitTransaction", [originalTx, splits]);
   }
 
   public subscribe(callback: (state: BridgeState) => void): () => void {
-    callback({
-      connected: false,
-      context: { type: "UNKNOWN", accountId: null },
-    });
-    return () => void 0;
+    const timer = setInterval(async () => {
+        try {
+            const s = await this.proxyCall<BridgeState>("state", []);
+            callback(s);
+        } catch (e) {
+            callback({ connected: false, context: { type: "UNKNOWN", accountId: null } });
+        }
+    }, 2000);
+
+    return () => clearInterval(timer);
   }
 
   public state(): BridgeState {
@@ -67,6 +69,23 @@ export class RemoteBridge implements ActualBridge {
   }
 
   public disconnect(): void {
-    // Stub
+     // No-op remotely
+  }
+
+  private async proxyCall<T>(method: string, args: any[]): Promise<T> {
+      const msg: ArbiterMessage = {
+          type: ARBITER_MESSAGE_TYPE,
+          action: ArbiterMessageType.PROXY_REQUEST,
+          payload: { method, args }
+      };
+
+      const response = await browser.runtime.sendMessage(msg);
+
+      if (!response) throw new Error("No response from Arbiter");
+      if (response.success) {
+          return response.data as T;
+      } else {
+          throw new Error(response.error || "Proxy call failed");
+      }
   }
 }
