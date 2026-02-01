@@ -241,4 +241,202 @@ describe("LocalBridge", () => {
       "Transaction ID required for save."
     );
   });
+
+  it("should handle createTransaction successfully", async () => {
+    const messageHandler = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.source !== "actual-bridge-host") return;
+
+      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.HANDSHAKE_ACK,
+          id: data.id,
+          payload: { success: true },
+        });
+      } else if (data.type === HostMessageType.CREATE_TRANSACTION) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.COMMAND_RESPONSE,
+          id: data.id,
+          payload: { success: true },
+        });
+      }
+    };
+
+    addMessageHandler(messageHandler);
+
+    await bridge.connect({ baseUrl });
+    
+    const importTransaction = {
+      account: "acc-1",
+      date: "2024-01-01",
+      amount: 100,
+      payee_name: "Test Payee",
+      imported_id: "import-123",
+    };
+
+    await expect(bridge.createTransaction(importTransaction)).resolves.toBeUndefined();
+  });
+
+  it("should throw error when createTransaction called without account ID", async () => {
+    const messageHandler = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.source !== "actual-bridge-host") return;
+
+      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.HANDSHAKE_ACK,
+          id: data.id,
+          payload: { success: true },
+        });
+      }
+    };
+
+    addMessageHandler(messageHandler);
+
+    await bridge.connect({ baseUrl });
+    
+    const transactionWithoutAccount = {
+      date: "2024-01-01",
+      amount: 100,
+      payee_name: "Test Payee",
+    };
+
+    await expect(bridge.createTransaction(transactionWithoutAccount as any)).rejects.toThrow(
+      "Account ID is mandatory for creation."
+    );
+  });
+
+  it("should throw context error when account mismatch in single account view", async () => {
+    const messageHandler = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.source !== "actual-bridge-host") return;
+
+      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.HANDSHAKE_ACK,
+          id: data.id,
+          payload: { success: true },
+        });
+        // Simulate state update with single account context
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.STATE_UPDATE,
+          payload: {
+            connected: true,
+            context: { type: "SINGLE_ACCOUNT", accountId: "acc-1" },
+          },
+        });
+      }
+    };
+
+    addMessageHandler(messageHandler);
+
+    await bridge.connect({ baseUrl });
+    
+    // Wait a bit for the state update to be processed
+    await new Promise(resolve => setTimeout(resolve, 10));
+    
+    const transactionWithDifferentAccount = {
+      account: "acc-2", // Different from current context
+      date: "2024-01-01",
+      amount: 100,
+      payee_name: "Test Payee",
+    };
+
+    await expect(bridge.createTransaction(transactionWithDifferentAccount)).rejects.toThrow(
+      "Current view (acc-1) matches not target (acc-2)."
+    );
+  });
+
+  it("should handle duplicate transaction error", async () => {
+    const messageHandler = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.source !== "actual-bridge-host") return;
+
+      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.HANDSHAKE_ACK,
+          id: data.id,
+          payload: { success: true },
+        });
+      } else if (data.type === HostMessageType.CREATE_TRANSACTION) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.COMMAND_RESPONSE,
+          id: data.id,
+          payload: {
+            success: false,
+            error: "Duplicate transaction detected.",
+            code: "DUPLICATE",
+            importedId: "import-123",
+          },
+        });
+      }
+    };
+
+    addMessageHandler(messageHandler);
+
+    await bridge.connect({ baseUrl });
+    
+    const duplicateTransaction = {
+      account: "acc-1",
+      date: "2024-01-01",
+      amount: 100,
+      imported_id: "import-123",
+    };
+
+    await expect(bridge.createTransaction(duplicateTransaction)).rejects.toThrow(
+      "Duplicate transaction detected."
+    );
+  });
+
+  it("should allow createTransaction in all accounts view regardless of target account", async () => {
+    const messageHandler = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.source !== "actual-bridge-host") return;
+
+      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.HANDSHAKE_ACK,
+          id: data.id,
+          payload: { success: true },
+        });
+        // Simulate state update with all accounts context
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.STATE_UPDATE,
+          payload: {
+            connected: true,
+            context: { type: "ALL_ACCOUNTS", accountId: null },
+          },
+        });
+      } else if (data.type === HostMessageType.CREATE_TRANSACTION) {
+        mockMessageEvent({
+          source: "actual-bridge-guest",
+          type: GuestMessageType.COMMAND_RESPONSE,
+          id: data.id,
+          payload: { success: true },
+        });
+      }
+    };
+
+    addMessageHandler(messageHandler);
+
+    await bridge.connect({ baseUrl });
+    
+    const transactionForAnyAccount = {
+      account: "acc-2",
+      date: "2024-01-01",
+      amount: 100,
+      payee_name: "Test Payee",
+    };
+
+    await expect(bridge.createTransaction(transactionForAnyAccount)).resolves.toBeUndefined();
+  });
 });
