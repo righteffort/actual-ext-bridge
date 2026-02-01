@@ -201,7 +201,7 @@ describe("LocalBridge", () => {
     addMessageHandler(messageHandler);
 
     await bridge.connect({ baseUrl });
-    
+
     const transaction = {
       id: "tx-123",
       account: "acc-1",
@@ -230,17 +230,57 @@ describe("LocalBridge", () => {
     addMessageHandler(messageHandler);
 
     await bridge.connect({ baseUrl });
-    
+
     const transactionWithoutId = {
       account: "acc-1",
       amount: 100,
       date: "2024-01-01",
     };
 
-    await expect(bridge.saveTransaction(transactionWithoutId as any)).rejects.toThrow(
-      "Transaction ID required for save."
-    );
+    await expect(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Omit id for test
+      bridge.saveTransaction(transactionWithoutId as any),
+    ).rejects.toThrow("Transaction ID required for save.");
   });
+
+  // TODO: test split. something like this but actually validate the behavior
+  // it("should split a transaction via saveTransaction", async () => {
+  //   // Setup Host Listener to mock the SAVE_TRANSACTION response
+  //   window.addEventListener("message", (event) => {
+  //     const data = event.data;
+  //     if (data && data.type === HostMessageType.SAVE_TRANSACTION) {
+  //       const payload = data.payload;
+  //       // Verify payload structure for split
+  //       if (payload.is_parent && payload.subtransactions.length === 2) {
+  //         mockMessageEvent({
+  //           source: "actual-bridge-guest",
+  //           type: GuestMessageType.COMMAND_RESPONSE,
+  //           id: data.id,
+  //           payload: { success: true }
+  //         });
+  //       }
+  //     }
+  //     // ... (Handshake handling if needed, usually mocked in beforeEach or helper)
+  //   });
+
+  //   await bridge.connect({ baseUrl });
+
+  //   const original = {
+  //     id: "tx-parent",
+  //     amount: 100,
+  //     account: "acc-1",
+  //     date: "2023-01-01"
+  //   };
+
+  //   const splits = [
+  //     { amount: 50, notes: "Split 1" },
+  //     { amount: 50, notes: "Split 2" }
+  //   ];
+
+  //   await bridge.splitTransaction(original, splits);
+  //   // Assertion is implicit via the mock responding success only if valid
+  //   // But we can also spy on send if we exposed it or mocked window.postMessage
+  // });
 
   it("should handle createTransaction successfully", async () => {
     const messageHandler = (event: MessageEvent) => {
@@ -267,7 +307,7 @@ describe("LocalBridge", () => {
     addMessageHandler(messageHandler);
 
     await bridge.connect({ baseUrl });
-    
+
     const importTransaction = {
       account: "acc-1",
       date: "2024-01-01",
@@ -276,7 +316,9 @@ describe("LocalBridge", () => {
       imported_id: "import-123",
     };
 
-    await expect(bridge.createTransaction(importTransaction)).resolves.toBeUndefined();
+    await expect(
+      bridge.createTransaction(importTransaction),
+    ).resolves.toBeUndefined();
   });
 
   it("should throw error when createTransaction called without account ID", async () => {
@@ -297,16 +339,17 @@ describe("LocalBridge", () => {
     addMessageHandler(messageHandler);
 
     await bridge.connect({ baseUrl });
-    
+
     const transactionWithoutAccount = {
       date: "2024-01-01",
       amount: 100,
       payee_name: "Test Payee",
     };
 
-    await expect(bridge.createTransaction(transactionWithoutAccount as any)).rejects.toThrow(
-      "Account ID is mandatory for creation."
-    );
+    await expect(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Omit account for test
+      bridge.createTransaction(transactionWithoutAccount as any),
+    ).rejects.toThrow("Account ID is mandatory for creation.");
   });
 
   it("should throw context error when account mismatch in single account view", async () => {
@@ -336,10 +379,10 @@ describe("LocalBridge", () => {
     addMessageHandler(messageHandler);
 
     await bridge.connect({ baseUrl });
-    
+
     // Wait a bit for the state update to be processed
-    await new Promise(resolve => setTimeout(resolve, 10));
-    
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
     const transactionWithDifferentAccount = {
       account: "acc-2", // Different from current context
       date: "2024-01-01",
@@ -347,9 +390,9 @@ describe("LocalBridge", () => {
       payee_name: "Test Payee",
     };
 
-    await expect(bridge.createTransaction(transactionWithDifferentAccount)).rejects.toThrow(
-      "Current view (acc-1) matches not target (acc-2)."
-    );
+    await expect(
+      bridge.createTransaction(transactionWithDifferentAccount),
+    ).rejects.toThrow("Current view (acc-1) matches not target (acc-2).");
   });
 
   it("should handle duplicate transaction error", async () => {
@@ -382,7 +425,7 @@ describe("LocalBridge", () => {
     addMessageHandler(messageHandler);
 
     await bridge.connect({ baseUrl });
-    
+
     const duplicateTransaction = {
       account: "acc-1",
       date: "2024-01-01",
@@ -390,9 +433,9 @@ describe("LocalBridge", () => {
       imported_id: "import-123",
     };
 
-    await expect(bridge.createTransaction(duplicateTransaction)).rejects.toThrow(
-      "Duplicate transaction detected."
-    );
+    await expect(
+      bridge.createTransaction(duplicateTransaction),
+    ).rejects.toThrow("Duplicate transaction detected.");
   });
 
   it("should allow createTransaction in all accounts view regardless of target account", async () => {
@@ -429,7 +472,7 @@ describe("LocalBridge", () => {
     addMessageHandler(messageHandler);
 
     await bridge.connect({ baseUrl });
-    
+
     const transactionForAnyAccount = {
       account: "acc-2",
       date: "2024-01-01",
@@ -437,6 +480,8 @@ describe("LocalBridge", () => {
       payee_name: "Test Payee",
     };
 
-    await expect(bridge.createTransaction(transactionForAnyAccount)).resolves.toBeUndefined();
+    await expect(
+      bridge.createTransaction(transactionForAnyAccount),
+    ).resolves.toBeUndefined();
   });
 });

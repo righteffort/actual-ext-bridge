@@ -154,6 +154,41 @@ export class LocalBridge implements ActualBridge {
   ): Promise<void> {
     console.warn("splitTransaction not yet implemented");
     return Promise.resolve();
+    // TODO: actually implement, something like this:
+    // if (!originalTx.id) {
+    //   throw new BridgeError("Original transaction ID is required for splitting.");
+    // }
+
+    // // Logic:
+    // // 1. We construct a new transaction object based on the original.
+    // // 2. We attach the 'subtransactions' array.
+    // // 3. We call saveTransaction (which calls onSave internally).
+    // // Actual Budget handles splits by updating the parent transaction's subtransactions field.
+
+    // // Validate splits sum? Optional, but Actual handles validation usually.
+    // // We just construct the payload.
+
+    // const updatedTx: Transaction = {
+    //   ...originalTx,
+    //   is_parent: true, // Mark as parent
+    //   subtransactions: splits as Transaction[], // Cast partials to full if backend accepts them, or we might need to merge defaults.
+    //   // Note: Actual's onSave usually expects the full structure.
+    //   // If splits are Partial, we might need to fill in gaps (like account/date from parent if missing).
+    // };
+
+    // // Fill in defaults for splits if missing
+    // updatedTx.subtransactions = splits.map(split => ({
+    //     ...split,
+    //     // Inherit from parent if not specified
+    //     account: split.account || originalTx.account,
+    //     date: split.date || originalTx.date,
+    //     // ID should be generated or exist. If new, it might be null/undefined?
+    //     // Actual's internal logic usually handles new subtransactions if they lack IDs?
+    //     // Or we should generate UUIDs.
+    //     // For safety in this bridge, we assume the caller provided IDs or the backend handles it.
+    // } as Transaction));
+
+    // await this.saveTransaction(updatedTx);
   }
 
   public disconnect(): void {
