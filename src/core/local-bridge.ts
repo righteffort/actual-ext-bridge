@@ -10,7 +10,6 @@ import {
   HostMessageType,
   SOURCE_GUEST,
   SOURCE_HOST,
-  TARGET_ORIGIN_VAR,
 } from "../shared/constants";
 import type {
   BridgeState,
@@ -42,12 +41,8 @@ export class LocalBridge implements ActualBridge {
   public async connect(config: { baseUrl: string }): Promise<void> {
     this.baseUrl = config.baseUrl;
     window.addEventListener("message", this.handleMessage);
-    const scriptContent = (guestLogicScript as string).replace(
-      TARGET_ORIGIN_VAR,
-      this.baseUrl,
-    );
     const script = document.createElement("script");
-    script.textContent = scriptContent;
+    script.textContent = guestLogicScript;
     script.onload = () => script.remove();
     (document.head || document.documentElement).appendChild(script);
 

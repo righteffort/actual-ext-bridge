@@ -1,6 +1,4 @@
 import {
-  TARGET_ORIGIN_VAR,
-  TEST_ORIGIN,
   SOURCE_GUEST,
   SOURCE_HOST,
   GuestMessageType,
@@ -29,10 +27,6 @@ interface ActualProps {
   onAdd?: (txs: unknown[]) => Promise<void>;
   onCreatePayee?: (name: string) => Promise<string>;
 }
-
-const isTestEnvironment =
-  typeof process !== "undefined" && process.env?.["NODE_ENV"] === "test";
-const ALLOWED_ORIGIN = isTestEnvironment ? TEST_ORIGIN : TARGET_ORIGIN_VAR;
 
 function findActualProps(): ActualProps | null {
   const anchor = document.querySelector(
@@ -117,11 +111,11 @@ function sendMessage(type: GuestMessageType, payload: unknown, id?: string) {
     payload,
   };
   if (id !== undefined) msg.id = id;
-  window.postMessage(msg, ALLOWED_ORIGIN);
+  window.postMessage(msg);
 }
 
 async function handleMessage(event: MessageEvent) {
-  if (event.origin !== ALLOWED_ORIGIN && event.origin !== window.origin) {
+  if (event.origin !== window.origin) {
     return;
   }
 

@@ -5,8 +5,8 @@ export default defineConfig({
     environment: 'jsdom',
     environmentOptions: {
       jsdom: {
-        // Set the URL so window.origin matches the security check expected by the code
-        url: 'https://app.actualbudget.org/',
+        // Set the URL so window.origin matches that used in guest-logic.test.ts
+        url: 'https://test.example.com/',
       }
     },
     setupFiles: ['./test/setup.ts'],

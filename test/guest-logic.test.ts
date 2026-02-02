@@ -6,8 +6,10 @@ import {
   HostMessageType,
   GuestMessageType,
   SOURCE_HOST,
-  TEST_ORIGIN,
 } from "../src/shared/constants";
+
+// Must match jsdom url in vitest.config.ts
+const TEST_ORIGIN = "https://test.example.com";
 
 // Helper to construct a Fiber Node mock
 function createFiber(
