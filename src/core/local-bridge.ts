@@ -1,11 +1,14 @@
-import { createBirpc } from 'birpc';
+import { createBirpc } from "birpc";
 import {
   BridgeConnectionError,
   BridgeContextError,
   BridgeDuplicateError,
   BridgeError,
 } from "../errors";
-import type { GuestRpcInterface, HostRpcInterface } from "../shared/rpc-interface";
+import type {
+  GuestRpcInterface,
+  HostRpcInterface,
+} from "../shared/rpc-interface";
 import type {
   BridgeState,
   ImportTransaction,
@@ -24,15 +27,13 @@ export class LocalBridge implements ActualBridge {
   };
   private listeners = new Set<(state: BridgeState) => void>();
   private baseUrl = "";
-  private rpc: ReturnType<typeof createBirpc<GuestRpcInterface, HostRpcInterface>> | null = null;
-
-  constructor() {
-    // No need to bind handleMessage anymore
-  }
+  private rpc: ReturnType<
+    typeof createBirpc<GuestRpcInterface, HostRpcInterface>
+  > | null = null;
 
   public async connect(config: { baseUrl: string }): Promise<void> {
     this.baseUrl = config.baseUrl;
-    
+
     // Create RPC instance
     const hostRpc: HostRpcInterface = {
       onStateUpdate: async (state: BridgeState) => {
@@ -87,7 +88,7 @@ export class LocalBridge implements ActualBridge {
     predicate?: (t: Transaction) => boolean,
   ): Promise<Transaction[]> {
     if (!this.rpc) throw new BridgeError("Not connected");
-    
+
     const all = await this.rpc.getTransactions();
     if (predicate) {
       return all.filter(predicate);
@@ -97,7 +98,7 @@ export class LocalBridge implements ActualBridge {
 
   public async getAccounts(): Promise<Account[]> {
     if (!this.rpc) throw new BridgeError("Not connected");
-    
+
     return await this.rpc.getAccounts();
   }
 
@@ -117,7 +118,7 @@ export class LocalBridge implements ActualBridge {
     if (!this.rpc) throw new BridgeError("Not connected");
     if (!transaction.id)
       throw new BridgeError("Transaction ID required for update.");
-    
+
     await this.rpc.updateTransaction(transaction);
   }
 

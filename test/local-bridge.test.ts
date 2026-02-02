@@ -348,10 +348,12 @@ describe("LocalBridge", () => {
         setTimeout(() => {
           mockMessageEvent({
             m: "onStateUpdate",
-            a: [{
-              connected: true,
-              context: { type: "SINGLE_ACCOUNT", accountId: "acc-1" },
-            }],
+            a: [
+              {
+                connected: true,
+                context: { type: "SINGLE_ACCOUNT", accountId: "acc-1" },
+              },
+            ],
             t: "q",
           });
         }, 5);
@@ -395,7 +397,7 @@ describe("LocalBridge", () => {
         };
         error.code = "DUPLICATE";
         error.importedId = "import-123";
-        
+
         mockMessageEvent({
           i: data.i,
           t: "e",
@@ -434,10 +436,12 @@ describe("LocalBridge", () => {
         setTimeout(() => {
           mockMessageEvent({
             m: "onStateUpdate",
-            a: [{
-              connected: true,
-              context: { type: "ALL_ACCOUNTS", accountId: null },
-            }],
+            a: [
+              {
+                connected: true,
+                context: { type: "ALL_ACCOUNTS", accountId: null },
+              },
+            ],
             t: "q",
           });
         }, 5);

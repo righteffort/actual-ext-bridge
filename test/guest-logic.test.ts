@@ -107,8 +107,6 @@ describe("Guest Logic", () => {
     const key = "__reactFiberTest";
     anchor[key] = createFiber(props);
 
-    const guestLogic = await import("../src/core/guest-logic");
-
     // Simulate birpc call to createTransaction
     const createTransactionPayload = {
       account: "acc-1",
@@ -177,11 +175,13 @@ describe("Guest Logic", () => {
       new MessageEvent("message", {
         data: {
           m: "createTransaction",
-          a: [{
-            account: "acc-1",
-            date: "2023-01-01",
-            imported_id: "imp-dup", // DUPLICATE
-          }],
+          a: [
+            {
+              account: "acc-1",
+              date: "2023-01-01",
+              imported_id: "imp-dup", // DUPLICATE
+            },
+          ],
           i: "req-dup",
           t: "q",
         },
@@ -192,7 +192,7 @@ describe("Guest Logic", () => {
     await new Promise((r) => setTimeout(r, 100));
 
     expect(onAdd).not.toHaveBeenCalled();
-    
+
     // Check birpc error response - birpc sends errors with t: "s" but includes error in e field
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({

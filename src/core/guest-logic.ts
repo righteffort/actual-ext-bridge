@@ -1,5 +1,8 @@
-import { createBirpc } from 'birpc';
-import type { GuestRpcInterface, HostRpcInterface } from "../shared/rpc-interface";
+import { createBirpc } from "birpc";
+import type {
+  GuestRpcInterface,
+  HostRpcInterface,
+} from "../shared/rpc-interface";
 import type {
   Transaction,
   ImportTransaction,
@@ -144,7 +147,6 @@ const rpc = createBirpc<HostRpcInterface, GuestRpcInterface>(guestRpc, {
     return () => window.removeEventListener("message", handler);
   },
 });
-
 
 async function resolvePayee(
   props: ActualProps,

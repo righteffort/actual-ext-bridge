@@ -586,6 +586,7 @@ __metadata:
     "@types/node": "npm:^25.1.0"
     "@types/webextension-polyfill": "npm:^0.12.4"
     "@vitest/coverage-v8": "npm:^4.0.18"
+    birpc: "npm:^4.0.0"
     eslint: "npm:^9.39.2"
     jsdom: "npm:^27.4.0"
     prettier: "npm:^3.8.1"
@@ -1434,6 +1435,13 @@ __metadata:
   dependencies:
     require-from-string: "npm:^2.0.2"
   checksum: 10c0/fdddea4aa4120a34285486f2267526cd9298b6e8b773ad25e765d4f104b6d7437ab4ba542e6939e3ac834a7570bcf121ee2cf6d3ae7cd7082c4b5bedc8f271e1
+  languageName: node
+  linkType: hard
+
+"birpc@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "birpc@npm:4.0.0"
+  checksum: 10c0/61f4e893ff4c5948b2c587c971c04883af0d8b2658d4632c8e77073db9f9e8b040402f985d56308021890b2ad32ef8392e36a8335cab1e3771d99e1b025d1af6
   languageName: node
   linkType: hard
 
