@@ -38,9 +38,18 @@ export interface ImportTransaction {
   }[];
 }
 
+export type AccountsEnum =
+  | "SINGLE_ACCOUNT"
+  | "ALL_ACCOUNTS"
+  | "ON_BUDGET_ACCOUNTS"
+  | "OFF_BUDGET_ACCOUNTS"
+  | "UNKNOWN";
 export type BridgeContext =
   | { type: "SINGLE_ACCOUNT"; accountId: string }
-  | { type: "ALL_ACCOUNTS"; accountId: null }
+  | {
+      type: "ALL_ACCOUNTS" | "OFF_BUDGET_ACCOUNTS" | "ON_BUDGET_ACCOUNTS";
+      accountId: null;
+    }
   | { type: "UNKNOWN"; accountId: null };
 
 export interface Account {

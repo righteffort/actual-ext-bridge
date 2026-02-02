@@ -8,6 +8,7 @@ import {
 import type {
   Transaction,
   ImportTransaction,
+  AccountsEnum,
   BridgeState,
   BridgeContext,
   Account,
@@ -28,6 +29,9 @@ interface ActualProps {
   onCreatePayee?: (name: string) => Promise<string>;
 }
 
+/**
+ * Returns React props to use to interact with the Actual Web App.
+ */
 function findActualProps(): ActualProps | null {
   const anchor = document.querySelector(
     ".recs-table-row, .recs-table-container",
@@ -61,17 +65,6 @@ function findActualProps(): ActualProps | null {
     attempts++;
   }
   return null;
-}
-
-function determineContext(): BridgeContext {
-  const match = window.location.pathname.match(/\/account\/([a-zA-Z0-9-]+)/);
-  if (match && match[1]) {
-    return { type: "SINGLE_ACCOUNT", accountId: match[1] };
-  }
-  if (window.location.pathname.includes("/accounts")) {
-    return { type: "ALL_ACCOUNTS", accountId: null };
-  }
-  return { type: "UNKNOWN", accountId: null };
 }
 
 async function resolvePayee(
@@ -111,7 +104,7 @@ function sendMessage(type: GuestMessageType, payload: unknown, id?: string) {
     payload,
   };
   if (id !== undefined) msg.id = id;
-  window.postMessage(msg);
+  window.postMessage(msg, "/");
 }
 
 async function handleMessage(event: MessageEvent) {
@@ -254,6 +247,32 @@ async function handleMessage(event: MessageEvent) {
   }
 }
 
+function determineContext(): BridgeContext {
+  const pathname = window.location.pathname.replace("/$", "");
+  const accountId = window.location.pathname.match(
+    "^/accounts/([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})$",
+  )?.[1];
+  if (accountId) {
+    return { type: "SINGLE_ACCOUNT", accountId };
+  }
+  let type: AccountsEnum;
+  switch (pathname) {
+    case "/accounts":
+      type = "ALL_ACCOUNTS";
+      break;
+    case "/accounts/offbudget":
+      type = "OFF_BUDGET_ACCOUNTS";
+      break;
+    case "/accounts/onbudget":
+      type = "ON_BUDGET_ACCOUNTS";
+      break;
+    default:
+      type = "UNKNOWN";
+  }
+
+  return { type, accountId: null };
+}
+
 function poll() {
   const props = findActualProps();
   const currentlyConnected = !!props;
@@ -269,6 +288,7 @@ function poll() {
 
 function init() {
   window.addEventListener("message", handleMessage);
+  // TODO: instead, push whenever state changes, which will be on navigation AFAIK
   window.setInterval(poll, 2000);
   poll();
   console.log("ActualBridge: Guest Logic Injected.");
