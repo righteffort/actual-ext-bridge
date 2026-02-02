@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { LocalBridge } from "../src/core/local-bridge";
-import { HostMessageType, GuestMessageType } from "../src/shared/constants";
 
 // Mock the guest logic script import
 vi.mock("../src/core/guest-logic.ts?inline-js", () => ({
@@ -63,13 +62,13 @@ describe("LocalBridge", () => {
   it("should inject the guest script on connect", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (data && data.type === HostMessageType.HANDSHAKE_INIT) {
-        // Reply with ACK asynchronously to simulate real behavior
+      // Handle birpc handshake call
+      if (data && data.m === "handshake") {
+        // Reply with birpc success response
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
       }
     };
@@ -87,21 +86,18 @@ describe("LocalBridge", () => {
   it("should handle getTransactions", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.source !== "actual-bridge-host") return;
 
-      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+      if (data && data.m === "handshake") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
-      } else if (data.type === HostMessageType.GET_TRANSACTIONS) {
+      } else if (data && data.m === "getTransactions") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.COMMAND_RESPONSE,
-          id: data.id,
-          payload: { success: true, data: [{ id: "tx-1", amount: 100 }] },
+          i: data.i,
+          t: "s",
+          r: [{ id: "tx-1", amount: 100 }],
         });
       }
     };
@@ -118,21 +114,18 @@ describe("LocalBridge", () => {
   it("should handle getAccounts", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.source !== "actual-bridge-host") return;
 
-      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+      if (data && data.m === "handshake") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
-      } else if (data.type === HostMessageType.GET_ACCOUNTS) {
+      } else if (data && data.m === "getAccounts") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.COMMAND_RESPONSE,
-          id: data.id,
-          payload: { success: true, data: [{ id: "acc-1", name: "Checking" }] },
+          i: data.i,
+          t: "s",
+          r: [{ id: "acc-1", name: "Checking" }],
         });
       }
     };
@@ -149,21 +142,18 @@ describe("LocalBridge", () => {
   it("should getAccountByName", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.source !== "actual-bridge-host") return;
 
-      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+      if (data && data.m === "handshake") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
-      } else if (data.type === HostMessageType.GET_ACCOUNTS) {
+      } else if (data && data.m === "getAccounts") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.COMMAND_RESPONSE,
-          id: data.id,
-          payload: { success: true, data: [{ id: "acc-1", name: "Savings" }] },
+          i: data.i,
+          t: "s",
+          r: [{ id: "acc-1", name: "Savings" }],
         });
       }
     };
@@ -179,21 +169,18 @@ describe("LocalBridge", () => {
   it("should handle updateTransaction", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.source !== "actual-bridge-host") return;
 
-      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+      if (data && data.m === "handshake") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
-      } else if (data.type === HostMessageType.UPDATE_TRANSACTION) {
+      } else if (data && data.m === "updateTransaction") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.COMMAND_RESPONSE,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: undefined,
         });
       }
     };
@@ -217,14 +204,12 @@ describe("LocalBridge", () => {
   it("should throw error when updateTransaction called without transaction ID", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.source !== "actual-bridge-host") return;
 
-      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+      if (data && data.m === "handshake") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
       }
     };
@@ -287,21 +272,18 @@ describe("LocalBridge", () => {
   it("should handle createTransaction successfully", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.source !== "actual-bridge-host") return;
 
-      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+      if (data && data.m === "handshake") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
-      } else if (data.type === HostMessageType.CREATE_TRANSACTION) {
+      } else if (data && data.m === "createTransaction") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.COMMAND_RESPONSE,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: undefined,
         });
       }
     };
@@ -326,14 +308,12 @@ describe("LocalBridge", () => {
   it("should throw error when createTransaction called without account ID", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.source !== "actual-bridge-host") return;
 
-      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+      if (data && data.m === "handshake") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
       }
     };
@@ -357,24 +337,24 @@ describe("LocalBridge", () => {
   it("should throw context error when account mismatch in single account view", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.source !== "actual-bridge-host") return;
 
-      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+      if (data && data.m === "handshake") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
-        // Simulate state update with single account context
-        mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.STATE_UPDATE,
-          payload: {
-            connected: true,
-            context: { type: "SINGLE_ACCOUNT", accountId: "acc-1" },
-          },
-        });
+        // Simulate state update with single account context via birpc
+        setTimeout(() => {
+          mockMessageEvent({
+            m: "onStateUpdate",
+            a: [{
+              connected: true,
+              context: { type: "SINGLE_ACCOUNT", accountId: "acc-1" },
+            }],
+            t: "q",
+          });
+        }, 5);
       }
     };
 
@@ -400,26 +380,26 @@ describe("LocalBridge", () => {
   it("should handle duplicate transaction error", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.source !== "actual-bridge-host") return;
 
-      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+      if (data && data.m === "handshake") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
-      } else if (data.type === HostMessageType.CREATE_TRANSACTION) {
+      } else if (data && data.m === "createTransaction") {
+        // Send birpc error response
+        const error = new Error("Duplicate transaction detected") as Error & {
+          code: string;
+          importedId: string;
+        };
+        error.code = "DUPLICATE";
+        error.importedId = "import-123";
+        
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.COMMAND_RESPONSE,
-          id: data.id,
-          payload: {
-            success: false,
-            error: "Duplicate transaction detected.",
-            code: "DUPLICATE",
-            importedId: "import-123",
-          },
+          i: data.i,
+          t: "e",
+          e: error,
         });
       }
     };
@@ -443,30 +423,29 @@ describe("LocalBridge", () => {
   it("should allow createTransaction in all accounts view regardless of target account", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
-      if (!data || data.source !== "actual-bridge-host") return;
 
-      if (data.type === HostMessageType.HANDSHAKE_INIT) {
+      if (data && data.m === "handshake") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.HANDSHAKE_ACK,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: { success: true },
         });
-        // Simulate state update with all accounts context
+        // Simulate state update with all accounts context via birpc
+        setTimeout(() => {
+          mockMessageEvent({
+            m: "onStateUpdate",
+            a: [{
+              connected: true,
+              context: { type: "ALL_ACCOUNTS", accountId: null },
+            }],
+            t: "q",
+          });
+        }, 5);
+      } else if (data && data.m === "createTransaction") {
         mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.STATE_UPDATE,
-          payload: {
-            connected: true,
-            context: { type: "ALL_ACCOUNTS", accountId: null },
-          },
-        });
-      } else if (data.type === HostMessageType.CREATE_TRANSACTION) {
-        mockMessageEvent({
-          source: "actual-bridge-guest",
-          type: GuestMessageType.COMMAND_RESPONSE,
-          id: data.id,
-          payload: { success: true },
+          i: data.i,
+          t: "s",
+          r: undefined,
         });
       }
     };

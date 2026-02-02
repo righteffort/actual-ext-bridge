@@ -2,11 +2,6 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  HostMessageType,
-  GuestMessageType,
-  SOURCE_HOST,
-} from "../src/shared/constants";
 
 // Must match jsdom url in vitest.config.ts
 const TEST_ORIGIN = "https://test.example.com";
@@ -46,11 +41,11 @@ describe("Guest Logic", () => {
     vi.useFakeTimers();
     vi.advanceTimersByTime(2500);
 
-    // Should verify it sent a state update with connected: false
+    // Should verify it sent a birpc message with onStateUpdate call
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: GuestMessageType.STATE_UPDATE,
-        payload: expect.objectContaining({ connected: false }),
+        m: "onStateUpdate",
+        a: [expect.objectContaining({ connected: false })],
       }),
       expect.anything(),
     );
@@ -83,8 +78,8 @@ describe("Guest Logic", () => {
 
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: GuestMessageType.STATE_UPDATE,
-        payload: expect.objectContaining({ connected: true }),
+        m: "onStateUpdate",
+        a: [expect.objectContaining({ connected: true })],
       }),
       expect.anything(),
     );
@@ -112,22 +107,25 @@ describe("Guest Logic", () => {
     const key = "__reactFiberTest";
     anchor[key] = createFiber(props);
 
-    await import("../src/core/guest-logic");
+    const guestLogic = await import("../src/core/guest-logic");
 
-    // Send Create Request (New Payee)
+    // Simulate birpc call to createTransaction
+    const createTransactionPayload = {
+      account: "acc-1",
+      date: "2023-01-01",
+      amount: 100,
+      payee_name: "New Store",
+      imported_id: "imp-1",
+    };
+
+    // Send birpc message to createTransaction
     window.dispatchEvent(
       new MessageEvent("message", {
         data: {
-          source: SOURCE_HOST,
-          type: HostMessageType.CREATE_TRANSACTION,
-          id: "req-1",
-          payload: {
-            account: "acc-1",
-            date: "2023-01-01",
-            amount: 100,
-            payee_name: "New Store",
-            imported_id: "imp-1",
-          },
+          m: "createTransaction",
+          a: [createTransactionPayload],
+          i: "req-1",
+          t: "q",
         },
         origin: TEST_ORIGIN,
       }),
@@ -146,12 +144,11 @@ describe("Guest Logic", () => {
       }),
     ]);
 
-    // Check Response
+    // Check birpc response
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: GuestMessageType.COMMAND_RESPONSE,
-        id: "req-1",
-        payload: { success: true },
+        i: "req-1",
+        t: "s",
       }),
       expect.anything(),
     );
@@ -175,17 +172,18 @@ describe("Guest Logic", () => {
 
     await import("../src/core/guest-logic");
 
+    // Send birpc message to createTransaction with duplicate
     window.dispatchEvent(
       new MessageEvent("message", {
         data: {
-          source: SOURCE_HOST,
-          type: HostMessageType.CREATE_TRANSACTION,
-          id: "req-dup",
-          payload: {
+          m: "createTransaction",
+          a: [{
             account: "acc-1",
             date: "2023-01-01",
             imported_id: "imp-dup", // DUPLICATE
-          },
+          }],
+          i: "req-dup",
+          t: "q",
         },
         origin: TEST_ORIGIN,
       }),
@@ -194,11 +192,14 @@ describe("Guest Logic", () => {
     await new Promise((r) => setTimeout(r, 100));
 
     expect(onAdd).not.toHaveBeenCalled();
+    
+    // Check birpc error response - birpc sends errors with t: "s" but includes error in e field
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: GuestMessageType.COMMAND_RESPONSE,
-        payload: expect.objectContaining({
-          success: false,
+        i: "req-dup",
+        t: "s",
+        e: expect.objectContaining({
+          message: "Duplicate transaction detected",
           code: "DUPLICATE",
           importedId: "imp-dup",
         }),

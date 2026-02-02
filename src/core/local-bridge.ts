@@ -1,16 +1,11 @@
+import { createBirpc } from 'birpc';
 import {
   BridgeConnectionError,
   BridgeContextError,
   BridgeDuplicateError,
   BridgeError,
 } from "../errors";
-import {
-  type BridgeMessage,
-  GuestMessageType,
-  HostMessageType,
-  SOURCE_GUEST,
-  SOURCE_HOST,
-} from "../shared/constants";
+import type { GuestRpcInterface, HostRpcInterface } from "../shared/rpc-interface";
 import type {
   BridgeState,
   ImportTransaction,
@@ -28,26 +23,45 @@ export class LocalBridge implements ActualBridge {
     context: { type: "UNKNOWN", accountId: null },
   };
   private listeners = new Set<(state: BridgeState) => void>();
-  private pendingRequests = new Map<
-    string,
-    { resolve: (val: unknown) => void; reject: (err: unknown) => void }
-  >();
   private baseUrl = "";
+  private rpc: ReturnType<typeof createBirpc<GuestRpcInterface, HostRpcInterface>> | null = null;
 
   constructor() {
-    this.handleMessage = this.handleMessage.bind(this);
+    // No need to bind handleMessage anymore
   }
 
   public async connect(config: { baseUrl: string }): Promise<void> {
     this.baseUrl = config.baseUrl;
-    window.addEventListener("message", this.handleMessage);
+    
+    // Create RPC instance
+    const hostRpc: HostRpcInterface = {
+      onStateUpdate: async (state: BridgeState) => {
+        this.internalState = state;
+        this.notifyListeners();
+      },
+    };
+
+    this.rpc = createBirpc<GuestRpcInterface, HostRpcInterface>(hostRpc, {
+      post: (data) => window.postMessage(data, this.baseUrl),
+      on: (fn) => {
+        const handler = (event: MessageEvent) => {
+          if (event.origin === this.baseUrl) {
+            fn(event.data);
+          }
+        };
+        window.addEventListener("message", handler);
+        return () => window.removeEventListener("message", handler);
+      },
+    });
+
+    // Inject guest script
     const script = document.createElement("script");
     script.textContent = guestLogicScript;
     script.onload = () => script.remove();
     (document.head || document.documentElement).appendChild(script);
 
     try {
-      await this.send(HostMessageType.HANDSHAKE_INIT, {});
+      await this.rpc.handshake();
     } catch (e) {
       const details = e instanceof Error ? e.message : String(e);
       throw new BridgeConnectionError(
@@ -72,10 +86,9 @@ export class LocalBridge implements ActualBridge {
   public async getTransactions(
     predicate?: (t: Transaction) => boolean,
   ): Promise<Transaction[]> {
-    const all = await this.send<Transaction[]>(
-      HostMessageType.GET_TRANSACTIONS,
-      {},
-    );
+    if (!this.rpc) throw new BridgeError("Not connected");
+    
+    const all = await this.rpc.getTransactions();
     if (predicate) {
       return all.filter(predicate);
     }
@@ -83,11 +96,9 @@ export class LocalBridge implements ActualBridge {
   }
 
   public async getAccounts(): Promise<Account[]> {
-    const accounts = await this.send<Account[]>(
-      HostMessageType.GET_ACCOUNTS,
-      {},
-    );
-    return accounts;
+    if (!this.rpc) throw new BridgeError("Not connected");
+    
+    return await this.rpc.getAccounts();
   }
 
   /**
@@ -103,12 +114,15 @@ export class LocalBridge implements ActualBridge {
 
   // TODO: support partial update!
   public async updateTransaction(transaction: Transaction): Promise<void> {
+    if (!this.rpc) throw new BridgeError("Not connected");
     if (!transaction.id)
       throw new BridgeError("Transaction ID required for update.");
-    await this.send(HostMessageType.UPDATE_TRANSACTION, transaction);
+    
+    await this.rpc.updateTransaction(transaction);
   }
 
   public async createTransaction(payload: ImportTransaction): Promise<void> {
+    if (!this.rpc) throw new BridgeError("Not connected");
     if (!payload.account) {
       throw new BridgeContextError("Account ID is mandatory for creation.");
     }
@@ -123,16 +137,15 @@ export class LocalBridge implements ActualBridge {
     }
 
     try {
-      await this.send(HostMessageType.CREATE_TRANSACTION, payload);
+      await this.rpc.createTransaction(payload);
     } catch (error: unknown) {
       if (
-        typeof error === "object" &&
-        error !== null &&
+        error instanceof Error &&
         "code" in error &&
-        (error as { code: string }).code === "DUPLICATE"
+        (error as Error & { code: string }).code === "DUPLICATE"
       ) {
         throw new BridgeDuplicateError(
-          (error as { importedId?: string }).importedId ||
+          (error as Error & { importedId?: string }).importedId ||
             payload.imported_id ||
             "unknown",
         );
@@ -185,90 +198,9 @@ export class LocalBridge implements ActualBridge {
   }
 
   public disconnect(): void {
-    window.removeEventListener("message", this.handleMessage);
+    this.rpc = null;
     this.listeners.clear();
     this.internalState.connected = false;
-  }
-
-  private send<T>(type: HostMessageType, payload: unknown): Promise<T> {
-    const id = crypto.randomUUID();
-    const msg: BridgeMessage = {
-      source: SOURCE_HOST,
-      type,
-      payload,
-      id,
-    };
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        if (this.pendingRequests.has(id)) {
-          this.pendingRequests.delete(id);
-          reject(new BridgeError("Request timed out"));
-        }
-      }, 5000);
-
-      this.pendingRequests.set(id, {
-        resolve: (val) => {
-          clearTimeout(timeout);
-          resolve(val as T);
-        },
-        reject: (err) => {
-          clearTimeout(timeout);
-          reject(err);
-        },
-      });
-      window.postMessage(msg, this.baseUrl);
-    });
-  }
-
-  private handleMessage(event: MessageEvent) {
-    if (event.origin !== this.baseUrl) {
-      return;
-    }
-    const data = event.data as BridgeMessage;
-    if (!data || data.source !== SOURCE_GUEST) {
-      return;
-    }
-
-    switch (data.type) {
-      case GuestMessageType.STATE_UPDATE:
-        this.internalState = data.payload as BridgeState;
-        this.notifyListeners();
-        break;
-
-      case GuestMessageType.HANDSHAKE_ACK:
-      case GuestMessageType.COMMAND_RESPONSE:
-        if (data.id && this.pendingRequests.has(data.id)) {
-          const request = this.pendingRequests.get(data.id);
-          if (request) {
-            const { resolve, reject } = request;
-            this.pendingRequests.delete(data.id);
-            const response = data.payload as {
-              success: boolean;
-              data?: unknown;
-              error?: string;
-              code?: string;
-              importedId?: string;
-            };
-
-            if (response.success) {
-              resolve(response.data);
-            } else {
-              if (response.code === "DUPLICATE") {
-                const duplicateInfo = {
-                  message: response.error,
-                  code: "DUPLICATE",
-                  importedId: response.importedId,
-                };
-                reject(duplicateInfo);
-              } else {
-                reject(new BridgeError(response.error || "Unknown error"));
-              }
-            }
-          }
-        }
-        break;
-    }
   }
 
   private notifyListeners() {

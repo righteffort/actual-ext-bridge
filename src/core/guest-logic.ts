@@ -1,10 +1,5 @@
-import {
-  SOURCE_GUEST,
-  SOURCE_HOST,
-  GuestMessageType,
-  HostMessageType,
-  type BridgeMessage,
-} from "../shared/constants";
+import { createBirpc } from 'birpc';
+import type { GuestRpcInterface, HostRpcInterface } from "../shared/rpc-interface";
 import type {
   Transaction,
   ImportTransaction,
@@ -67,172 +62,89 @@ function findActualProps(): ActualProps | null {
   return null;
 }
 
-function sendMessage(type: GuestMessageType, payload: unknown, id?: string) {
-  const msg: BridgeMessage = {
-    source: SOURCE_GUEST,
-    type,
-    payload,
-  };
-  if (id !== undefined) msg.id = id;
-  window.postMessage(msg, "/");
-}
+// RPC implementation for the guest side
+const guestRpc: GuestRpcInterface = {
+  async handshake() {
+    poll(); // Start polling when handshake completes
+    return { success: true };
+  },
 
-async function handleMessage(event: MessageEvent) {
-  if (event.origin !== window.origin) {
-    return;
-  }
-
-  const data = event.data as BridgeMessage;
-  if (!data || data.source !== SOURCE_HOST) {
-    return;
-  }
-
-  const props = findActualProps();
-
-  switch (data.type) {
-    case HostMessageType.HANDSHAKE_INIT:
-      sendMessage(GuestMessageType.HANDSHAKE_ACK, { success: true }, data.id);
-      poll();
-      break;
-
-    case HostMessageType.GET_TRANSACTIONS:
-      handleGetTransactions(props, data.id);
-      break;
-
-    case HostMessageType.GET_ACCOUNTS:
-      handleGetAccounts(props, data.id);
-      break;
-
-    case HostMessageType.UPDATE_TRANSACTION:
-      await handleUpdateTransaction(props, data.payload, data.id);
-      break;
-
-    case HostMessageType.CREATE_TRANSACTION:
-      await handleCreateTransaction(props, data.payload, data.id);
-      break;
-  }
-}
-
-function handleGetTransactions(props: ActualProps | null, id?: string) {
-  // TODO: it woud be nice to support filtering
-  if (props) {
-    sendMessage(
-      GuestMessageType.COMMAND_RESPONSE,
-      { success: true, data: props.transactions || [] },
-      id,
-    );
-  } else {
-    sendMessage(
-      GuestMessageType.COMMAND_RESPONSE,
-      { success: false, error: "Not connected" },
-      id,
-    );
-  }
-}
-
-function handleGetAccounts(props: ActualProps | null, id?: string) {
-  if (props) {
-    sendMessage(
-      GuestMessageType.COMMAND_RESPONSE,
-      { success: true, data: props.accounts || [] },
-      id,
-    );
-  } else {
-    sendMessage(
-      GuestMessageType.COMMAND_RESPONSE,
-      { success: false, error: "Not connected" },
-      id,
-    );
-  }
-}
-
-async function handleUpdateTransaction(
-  props: ActualProps | null,
-  payload: unknown,
-  id?: string,
-) {
-  if (props && props.onSave) {
-    try {
-      // https://github.com/actualbudget/actual/blob/master/packages/desktop-client/src/components/transactions/TransactionsTable.tsx#L2730
-      // Look for 'onSave = useCallback'
-      // TODO: support fieldName
-      await props.onSave(payload);
-      sendMessage(GuestMessageType.COMMAND_RESPONSE, { success: true }, id);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      sendMessage(
-        GuestMessageType.COMMAND_RESPONSE,
-        { success: false, error: message },
-        id,
-      );
+  async getTransactions() {
+    const props = findActualProps();
+    if (!props) {
+      throw new Error("Not connected");
     }
-  } else {
-    sendMessage(
-      GuestMessageType.COMMAND_RESPONSE,
-      { success: false, error: "onSave not available" },
-      id,
-    );
-  }
-}
+    return props.transactions || [];
+  },
 
-async function handleCreateTransaction(
-  props: ActualProps | null,
-  payload: unknown,
-  id?: string,
-) {
-  if (props && props.onAdd) {
-    const txPayload = payload as ImportTransaction;
-    if (txPayload.imported_id && isDuplicate(props, txPayload.imported_id)) {
-      sendMessage(
-        GuestMessageType.COMMAND_RESPONSE,
-        {
-          success: false,
-          error: "Duplicate",
-          code: "DUPLICATE",
-          importedId: txPayload.imported_id,
-        },
-        id,
-      );
-      return;
+  async getAccounts() {
+    const props = findActualProps();
+    if (!props) {
+      throw new Error("Not connected");
+    }
+    return props.accounts || [];
+  },
+
+  async updateTransaction(transaction: Transaction) {
+    const props = findActualProps();
+    if (!props || !props.onSave) {
+      throw new Error("onSave not available");
+    }
+    await props.onSave(transaction);
+  },
+
+  async createTransaction(payload: ImportTransaction) {
+    const props = findActualProps();
+    if (!props || !props.onAdd) {
+      throw new Error("onAdd not available");
     }
 
-    let payeeId = txPayload.payee;
-    if (!payeeId && txPayload.payee_name) {
-      payeeId = await resolvePayee(props, txPayload.payee_name);
+    if (payload.imported_id && isDuplicate(props, payload.imported_id)) {
+      const error = new Error("Duplicate transaction detected") as Error & {
+        code: string;
+        importedId: string;
+      };
+      error.code = "DUPLICATE";
+      error.importedId = payload.imported_id;
+      throw error;
+    }
+
+    let payeeId = payload.payee;
+    if (!payeeId && payload.payee_name) {
+      payeeId = await resolvePayee(props, payload.payee_name);
     }
 
     const newTx: Record<string, unknown> = {
-      account: txPayload.account,
-      date: txPayload.date,
-      amount: txPayload.amount,
-      notes: txPayload.notes || "",
+      account: payload.account,
+      date: payload.date,
+      amount: payload.amount,
+      notes: payload.notes || "",
       payee: payeeId || null,
-      imported_id: txPayload.imported_id,
-      imported_payee: txPayload.imported_payee,
-      cleared: txPayload.cleared !== undefined ? txPayload.cleared : false,
-      subtransactions: txPayload.subtransactions,
+      imported_id: payload.imported_id,
+      imported_payee: payload.imported_payee,
+      cleared: payload.cleared !== undefined ? payload.cleared : false,
+      subtransactions: payload.subtransactions,
     };
-    if (txPayload.category) newTx["category"] = txPayload.category;
+    if (payload.category) newTx["category"] = payload.category;
 
-    try {
-      await props.onAdd([newTx]);
-      sendMessage(GuestMessageType.COMMAND_RESPONSE, { success: true }, id);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      sendMessage(
-        GuestMessageType.COMMAND_RESPONSE,
-        { success: false, error: message },
-        id,
-      );
-    }
-  } else {
-    sendMessage(
-      GuestMessageType.COMMAND_RESPONSE,
-      { success: false, error: "onAdd not available" },
-      id,
-    );
-  }
-}
+    await props.onAdd([newTx]);
+  },
+};
+
+// Create birpc instance
+const rpc = createBirpc<HostRpcInterface, GuestRpcInterface>(guestRpc, {
+  post: (data) => window.postMessage(data, "/"),
+  on: (fn) => {
+    const handler = (event: MessageEvent) => {
+      if (event.origin === window.origin) {
+        fn(event.data);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  },
+});
+
 
 async function resolvePayee(
   props: ActualProps,
@@ -300,12 +212,13 @@ function poll() {
     context: determineContext(),
   };
 
-  // Always send state update on poll for testing purposes
-  sendMessage(GuestMessageType.STATE_UPDATE, currentState);
+  // Send state update via RPC
+  rpc.onStateUpdate(currentState).catch((error) => {
+    console.warn("Failed to send state update:", error);
+  });
 }
 
 function init() {
-  window.addEventListener("message", handleMessage);
   // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
   window.setInterval(poll, 2000);
   poll();
