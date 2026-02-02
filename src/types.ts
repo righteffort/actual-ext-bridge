@@ -80,7 +80,7 @@ export interface ActualBridge {
 
   getAccountByName(name: string): Promise<Account | null>;
 
-  saveTransaction(transaction: Transaction): Promise<void>;
+  updateTransaction(transaction: Transaction): Promise<void>;
 
   createTransaction(payload: ImportTransaction): Promise<void>;
 

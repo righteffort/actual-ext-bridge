@@ -67,36 +67,6 @@ function findActualProps(): ActualProps | null {
   return null;
 }
 
-async function resolvePayee(
-  props: ActualProps,
-  name: string,
-): Promise<string | undefined> {
-  if (!props.payees || !Array.isArray(props.payees)) {
-    console.warn("ActualBridge: No payees found in props.");
-    return undefined;
-  }
-  // TODO we should maintain a cache!
-  const existing = props.payees.find(
-    (p) => p.name.toLowerCase() === name.toLowerCase(),
-  );
-  if (existing) return existing.id;
-  if (typeof props.onCreatePayee === "function") {
-    try {
-      return await props.onCreatePayee(name);
-    } catch (error) {
-      console.error("Failed to create payee", error);
-    }
-  }
-  return undefined;
-}
-
-function isDuplicate(props: ActualProps, importedId: string): boolean {
-  if (!props.transactions || !importedId) return false;
-  return props.transactions.some(
-    (t: Transaction) => t.imported_id === importedId,
-  );
-}
-
 function sendMessage(type: GuestMessageType, payload: unknown, id?: string) {
   const msg: BridgeMessage = {
     source: SOURCE_GUEST,
@@ -133,8 +103,8 @@ async function handleMessage(event: MessageEvent) {
       handleGetAccounts(props, data.id);
       break;
 
-    case HostMessageType.SAVE_TRANSACTION:
-      await handleSaveTransaction(props, data.payload, data.id);
+    case HostMessageType.UPDATE_TRANSACTION:
+      await handleUpdateTransaction(props, data.payload, data.id);
       break;
 
     case HostMessageType.CREATE_TRANSACTION:
@@ -176,18 +146,17 @@ function handleGetAccounts(props: ActualProps | null, id?: string) {
   }
 }
 
-async function handleSaveTransaction(props: ActualProps | null, payload: unknown, id?: string) {
+async function handleUpdateTransaction(
+  props: ActualProps | null,
+  payload: unknown,
+  id?: string,
+) {
   if (props && props.onSave) {
     try {
       await props.onSave(payload);
-      sendMessage(
-        GuestMessageType.COMMAND_RESPONSE,
-        { success: true },
-        id,
-      );
+      sendMessage(GuestMessageType.COMMAND_RESPONSE, { success: true }, id);
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
       sendMessage(
         GuestMessageType.COMMAND_RESPONSE,
         { success: false, error: message },
@@ -203,7 +172,11 @@ async function handleSaveTransaction(props: ActualProps | null, payload: unknown
   }
 }
 
-async function handleCreateTransaction(props: ActualProps | null, payload: unknown, id?: string) {
+async function handleCreateTransaction(
+  props: ActualProps | null,
+  payload: unknown,
+  id?: string,
+) {
   if (props && props.onAdd) {
     const txPayload = payload as ImportTransaction;
     if (txPayload.imported_id && isDuplicate(props, txPayload.imported_id)) {
@@ -240,14 +213,9 @@ async function handleCreateTransaction(props: ActualProps | null, payload: unkno
 
     try {
       await props.onAdd([newTx]);
-      sendMessage(
-        GuestMessageType.COMMAND_RESPONSE,
-        { success: true },
-        id,
-      );
+      sendMessage(GuestMessageType.COMMAND_RESPONSE, { success: true }, id);
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : String(error);
       sendMessage(
         GuestMessageType.COMMAND_RESPONSE,
         { success: false, error: message },
@@ -261,6 +229,37 @@ async function handleCreateTransaction(props: ActualProps | null, payload: unkno
       id,
     );
   }
+}
+
+async function resolvePayee(
+  props: ActualProps,
+  name: string,
+): Promise<string | undefined> {
+  if (!props.payees || !Array.isArray(props.payees)) {
+    console.warn("ActualBridge: No payees found in props.");
+    return undefined;
+  }
+  // TODO we should maintain a cache!
+  const existing = props.payees.find(
+    (p) => p.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (existing) return existing.id;
+  if (typeof props.onCreatePayee === "function") {
+    try {
+      return await props.onCreatePayee(name);
+    } catch (error) {
+      console.error("Failed to create payee", error);
+    }
+  }
+  return undefined;
+}
+
+function isDuplicate(props: ActualProps, importedId: string): boolean {
+  if (!props.transactions || !importedId) return false;
+  // TODO we should maintain a set of importedIds!
+  return props.transactions.some(
+    (t: Transaction) => t.imported_id === importedId,
+  );
 }
 
 function determineContext(): BridgeContext {
@@ -304,7 +303,7 @@ function poll() {
 
 function init() {
   window.addEventListener("message", handleMessage);
-  // TODO: instead, push whenever state changes, which will be on navigation AFAIK
+  // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
   window.setInterval(poll, 2000);
   poll();
   console.log("ActualBridge: Guest Logic Injected.");

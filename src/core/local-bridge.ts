@@ -104,10 +104,10 @@ export class LocalBridge implements ActualBridge {
     );
   }
 
-  public async saveTransaction(transaction: Transaction): Promise<void> {
+  public async updateTransaction(transaction: Transaction): Promise<void> {
     if (!transaction.id)
-      throw new BridgeError("Transaction ID required for save.");
-    await this.send(HostMessageType.SAVE_TRANSACTION, transaction);
+      throw new BridgeError("Transaction ID required for update.");
+    await this.send(HostMessageType.UPDATE_TRANSACTION, transaction);
   }
 
   public async createTransaction(payload: ImportTransaction): Promise<void> {
@@ -157,7 +157,7 @@ export class LocalBridge implements ActualBridge {
     // // Logic:
     // // 1. We construct a new transaction object based on the original.
     // // 2. We attach the 'subtransactions' array.
-    // // 3. We call saveTransaction (which calls onSave internally).
+    // // 3. We call updateTransaction (which calls onSave internally).
     // // Actual Budget handles splits by updating the parent transaction's subtransactions field.
 
     // // Validate splits sum? Optional, but Actual handles validation usually.
@@ -183,7 +183,7 @@ export class LocalBridge implements ActualBridge {
     //     // For safety in this bridge, we assume the caller provided IDs or the backend handles it.
     // } as Transaction));
 
-    // await this.saveTransaction(updatedTx);
+    // await this.updateTransaction(updatedTx);
   }
 
   public disconnect(): void {

@@ -176,7 +176,7 @@ describe("LocalBridge", () => {
     expect(account?.id).toBe("acc-1");
   });
 
-  it("should handle saveTransaction", async () => {
+  it("should handle updateTransaction", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
       if (!data || data.source !== "actual-bridge-host") return;
@@ -188,7 +188,7 @@ describe("LocalBridge", () => {
           id: data.id,
           payload: { success: true },
         });
-      } else if (data.type === HostMessageType.SAVE_TRANSACTION) {
+      } else if (data.type === HostMessageType.UPDATE_TRANSACTION) {
         mockMessageEvent({
           source: "actual-bridge-guest",
           type: GuestMessageType.COMMAND_RESPONSE,
@@ -209,10 +209,12 @@ describe("LocalBridge", () => {
       date: "2024-01-01",
     };
 
-    await expect(bridge.saveTransaction(transaction)).resolves.toBeUndefined();
+    await expect(
+      bridge.updateTransaction(transaction),
+    ).resolves.toBeUndefined();
   });
 
-  it("should throw error when saveTransaction called without transaction ID", async () => {
+  it("should throw error when updateTransaction called without transaction ID", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
       if (!data || data.source !== "actual-bridge-host") return;
@@ -239,16 +241,16 @@ describe("LocalBridge", () => {
 
     await expect(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Omit id for test
-      bridge.saveTransaction(transactionWithoutId as any),
-    ).rejects.toThrow("Transaction ID required for save.");
+      bridge.updateTransaction(transactionWithoutId as any),
+    ).rejects.toThrow("Transaction ID required for update.");
   });
 
   // TODO: test split. something like this but actually validate the behavior
-  // it("should split a transaction via saveTransaction", async () => {
-  //   // Setup Host Listener to mock the SAVE_TRANSACTION response
+  // it("should split a transaction via updateTransaction", async () => {
+  //   // Setup Host Listener to mock the UPDATE_TRANSACTION response
   //   window.addEventListener("message", (event) => {
   //     const data = event.data;
-  //     if (data && data.type === HostMessageType.SAVE_TRANSACTION) {
+  //     if (data && data.type === HostMessageType.UPDATE_TRANSACTION) {
   //       const payload = data.payload;
   //       // Verify payload structure for split
   //       if (payload.is_parent && payload.subtransactions.length === 2) {
