@@ -126,124 +126,140 @@ async function handleMessage(event: MessageEvent) {
       break;
 
     case HostMessageType.GET_TRANSACTIONS:
-      // TODO: it woud be nice to support filtering
-      if (props) {
-        sendMessage(
-          GuestMessageType.COMMAND_RESPONSE,
-          { success: true, data: props.transactions || [] },
-          data.id,
-        );
-      } else {
-        sendMessage(
-          GuestMessageType.COMMAND_RESPONSE,
-          { success: false, error: "Not connected" },
-          data.id,
-        );
-      }
+      handleGetTransactions(props, data.id);
       break;
 
     case HostMessageType.GET_ACCOUNTS:
-      if (props) {
-        sendMessage(
-          GuestMessageType.COMMAND_RESPONSE,
-          { success: true, data: props.accounts || [] },
-          data.id,
-        );
-      } else {
-        sendMessage(
-          GuestMessageType.COMMAND_RESPONSE,
-          { success: false, error: "Not connected" },
-          data.id,
-        );
-      }
+      handleGetAccounts(props, data.id);
       break;
 
     case HostMessageType.SAVE_TRANSACTION:
-      if (props && props.onSave) {
-        try {
-          await props.onSave(data.payload);
-          sendMessage(
-            GuestMessageType.COMMAND_RESPONSE,
-            { success: true },
-            data.id,
-          );
-        } catch (error: unknown) {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          sendMessage(
-            GuestMessageType.COMMAND_RESPONSE,
-            { success: false, error: message },
-            data.id,
-          );
-        }
-      } else {
-        sendMessage(
-          GuestMessageType.COMMAND_RESPONSE,
-          { success: false, error: "onSave not available" },
-          data.id,
-        );
-      }
+      await handleSaveTransaction(props, data.payload, data.id);
       break;
 
     case HostMessageType.CREATE_TRANSACTION:
-      if (props && props.onAdd) {
-        const payload = data.payload as ImportTransaction;
-        if (payload.imported_id && isDuplicate(props, payload.imported_id)) {
-          sendMessage(
-            GuestMessageType.COMMAND_RESPONSE,
-            {
-              success: false,
-              error: "Duplicate",
-              code: "DUPLICATE",
-              importedId: payload.imported_id,
-            },
-            data.id,
-          );
-          return;
-        }
-
-        let payeeId = payload.payee;
-        if (!payeeId && payload.payee_name) {
-          payeeId = await resolvePayee(props, payload.payee_name);
-        }
-
-        const newTx: Record<string, unknown> = {
-          account: payload.account,
-          date: payload.date,
-          amount: payload.amount,
-          notes: payload.notes || "",
-          payee: payeeId || null,
-          imported_id: payload.imported_id,
-          imported_payee: payload.imported_payee,
-          cleared: payload.cleared !== undefined ? payload.cleared : false,
-          subtransactions: payload.subtransactions,
-        };
-        if (payload.category) newTx["category"] = payload.category;
-
-        try {
-          await props.onAdd([newTx]);
-          sendMessage(
-            GuestMessageType.COMMAND_RESPONSE,
-            { success: true },
-            data.id,
-          );
-        } catch (error: unknown) {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          sendMessage(
-            GuestMessageType.COMMAND_RESPONSE,
-            { success: false, error: message },
-            data.id,
-          );
-        }
-      } else {
-        sendMessage(
-          GuestMessageType.COMMAND_RESPONSE,
-          { success: false, error: "onAdd not available" },
-          data.id,
-        );
-      }
+      await handleCreateTransaction(props, data.payload, data.id);
       break;
+  }
+}
+
+function handleGetTransactions(props: ActualProps | null, id?: string) {
+  // TODO: it woud be nice to support filtering
+  if (props) {
+    sendMessage(
+      GuestMessageType.COMMAND_RESPONSE,
+      { success: true, data: props.transactions || [] },
+      id,
+    );
+  } else {
+    sendMessage(
+      GuestMessageType.COMMAND_RESPONSE,
+      { success: false, error: "Not connected" },
+      id,
+    );
+  }
+}
+
+function handleGetAccounts(props: ActualProps | null, id?: string) {
+  if (props) {
+    sendMessage(
+      GuestMessageType.COMMAND_RESPONSE,
+      { success: true, data: props.accounts || [] },
+      id,
+    );
+  } else {
+    sendMessage(
+      GuestMessageType.COMMAND_RESPONSE,
+      { success: false, error: "Not connected" },
+      id,
+    );
+  }
+}
+
+async function handleSaveTransaction(props: ActualProps | null, payload: unknown, id?: string) {
+  if (props && props.onSave) {
+    try {
+      await props.onSave(payload);
+      sendMessage(
+        GuestMessageType.COMMAND_RESPONSE,
+        { success: true },
+        id,
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : String(error);
+      sendMessage(
+        GuestMessageType.COMMAND_RESPONSE,
+        { success: false, error: message },
+        id,
+      );
+    }
+  } else {
+    sendMessage(
+      GuestMessageType.COMMAND_RESPONSE,
+      { success: false, error: "onSave not available" },
+      id,
+    );
+  }
+}
+
+async function handleCreateTransaction(props: ActualProps | null, payload: unknown, id?: string) {
+  if (props && props.onAdd) {
+    const txPayload = payload as ImportTransaction;
+    if (txPayload.imported_id && isDuplicate(props, txPayload.imported_id)) {
+      sendMessage(
+        GuestMessageType.COMMAND_RESPONSE,
+        {
+          success: false,
+          error: "Duplicate",
+          code: "DUPLICATE",
+          importedId: txPayload.imported_id,
+        },
+        id,
+      );
+      return;
+    }
+
+    let payeeId = txPayload.payee;
+    if (!payeeId && txPayload.payee_name) {
+      payeeId = await resolvePayee(props, txPayload.payee_name);
+    }
+
+    const newTx: Record<string, unknown> = {
+      account: txPayload.account,
+      date: txPayload.date,
+      amount: txPayload.amount,
+      notes: txPayload.notes || "",
+      payee: payeeId || null,
+      imported_id: txPayload.imported_id,
+      imported_payee: txPayload.imported_payee,
+      cleared: txPayload.cleared !== undefined ? txPayload.cleared : false,
+      subtransactions: txPayload.subtransactions,
+    };
+    if (txPayload.category) newTx["category"] = txPayload.category;
+
+    try {
+      await props.onAdd([newTx]);
+      sendMessage(
+        GuestMessageType.COMMAND_RESPONSE,
+        { success: true },
+        id,
+      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : String(error);
+      sendMessage(
+        GuestMessageType.COMMAND_RESPONSE,
+        { success: false, error: message },
+        id,
+      );
+    }
+  } else {
+    sendMessage(
+      GuestMessageType.COMMAND_RESPONSE,
+      { success: false, error: "onAdd not available" },
+      id,
+    );
   }
 }
 
