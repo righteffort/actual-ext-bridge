@@ -23,18 +23,15 @@ export class RemoteBridge implements ActualBridge {
 
   public async getTransactions(
     predicate?: (t: Transaction) => boolean,
-  ): Promise<Transaction[] | null> {
-    const txs = await this.proxyCall<Transaction[] | null>(
-      "getTransactions",
-      [],
-    );
+  ): Promise<Transaction[]> {
+    const txs = await this.proxyCall<Transaction[]>("getTransactions", []);
     if (txs && predicate) {
       return txs.filter(predicate);
     }
     return txs;
   }
 
-  public async getAccounts(): Promise<Account[] | null> {
+  public async getAccounts(): Promise<Account[]> {
     return this.proxyCall("getAccounts", []);
   }
 

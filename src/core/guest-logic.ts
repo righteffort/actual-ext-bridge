@@ -153,6 +153,8 @@ async function handleUpdateTransaction(
 ) {
   if (props && props.onSave) {
     try {
+      // https://github.com/actualbudget/actual/blob/master/packages/desktop-client/src/components/transactions/TransactionsTable.tsx#L2730
+      // Look for 'onSave = useCallback'
       await props.onSave(payload);
       sendMessage(GuestMessageType.COMMAND_RESPONSE, { success: true }, id);
     } catch (error: unknown) {

@@ -74,9 +74,9 @@ export interface ActualBridge {
 
   getTransactions(
     predicate?: (t: Transaction) => boolean,
-  ): Promise<Transaction[] | null>;
+  ): Promise<Transaction[]>;
 
-  getAccounts(): Promise<Account[] | null>;
+  getAccounts(): Promise<Account[]>;
 
   getAccountByName(name: string): Promise<Account | null>;
 

@@ -66,31 +66,28 @@ export class LocalBridge implements ActualBridge {
     return this.internalState;
   }
 
-  // --- RPC Methods ---
-
   /**
    * Fetches all transactions, optionally filtering them on the client side.
    */
   public async getTransactions(
     predicate?: (t: Transaction) => boolean,
-  ): Promise<Transaction[] | null> {
+  ): Promise<Transaction[]> {
     const all = await this.send<Transaction[]>(
       HostMessageType.GET_TRANSACTIONS,
       {},
     );
-    if (!all) return null;
     if (predicate) {
       return all.filter(predicate);
     }
     return all;
   }
 
-  public async getAccounts(): Promise<Account[] | null> {
+  public async getAccounts(): Promise<Account[]> {
     const accounts = await this.send<Account[]>(
       HostMessageType.GET_ACCOUNTS,
       {},
     );
-    return accounts || null;
+    return accounts;
   }
 
   /**
@@ -104,6 +101,7 @@ export class LocalBridge implements ActualBridge {
     );
   }
 
+  // TODO: support partial update!
   public async updateTransaction(transaction: Transaction): Promise<void> {
     if (!transaction.id)
       throw new BridgeError("Transaction ID required for update.");
