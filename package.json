@@ -48,6 +48,7 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "birpc": "^4.0.0"
+    "birpc": "^4.0.0",
+    "webextension-polyfill": "^0.12.0"
   }
 }
