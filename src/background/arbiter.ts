@@ -34,7 +34,7 @@ export class BridgeArbiter {
   }
 
   public start(): void {
-    console.log(`arbiter start`);
+    console.log(`AXB: arbiter start`);
     browser.runtime.onMessage.addListener(this.handleMessage);
     browser.tabs.onRemoved.addListener(this.handleTabRemoved);
   }
@@ -61,7 +61,7 @@ export class BridgeArbiter {
   ): Promise<unknown> | undefined {
     const msg = message as ArbiterMessageInterface;
     console.log(
-      `arbiter handleMessage received ${JSON.stringify(message)} from ${JSON.stringify(sender)}`,
+      `AXB: arbiter handleMessage received ${JSON.stringify(message)} from ${JSON.stringify(sender)}`,
     );
 
     // Allow simple ID request without strict typing if needed
@@ -99,7 +99,7 @@ export class BridgeArbiter {
 
   private handleTabRemoved(tabId: number) {
     if (tabId === this.primaryTabId) {
-      console.log(`[Arbiter] Primary tab ${tabId} closed.`);
+      console.log(`AXB: [Arbiter] Primary tab ${tabId} closed.`);
       this.primaryTabId = null;
       this.broadcastChange(null);
     }
@@ -111,7 +111,9 @@ export class BridgeArbiter {
 
     this.heartbeatTimeout = setTimeout(() => {
       if (Date.now() - this.lastHeartbeatTime > BridgeArbiter.TIMEOUT_MS) {
-        console.warn(`[Arbiter] Primary tab ${this.primaryTabId} timed out.`);
+        console.warn(
+          `AXB: [Arbiter] Primary tab ${this.primaryTabId} timed out.`,
+        );
         this.primaryTabId = null;
         this.broadcastChange(null);
       }

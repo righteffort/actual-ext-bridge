@@ -66,7 +66,7 @@ export class LocalBridge implements ActualBridge {
     } catch (e) {
       const details = e instanceof Error ? e.message : String(e);
       throw new BridgeConnectionError(
-        `Handshake failed. Is the URL correct? ${details}`,
+        `AXB: Handshake failed. Is the URL correct? ${details}`,
       );
     }
   }
@@ -87,7 +87,7 @@ export class LocalBridge implements ActualBridge {
   public async getTransactions(
     predicate?: (t: Transaction) => boolean,
   ): Promise<Transaction[]> {
-    if (!this.rpc) throw new BridgeError("Not connected");
+    if (!this.rpc) throw new BridgeError("AXB: Not connected");
 
     const all = await this.rpc.getTransactions();
     if (predicate) {
@@ -97,7 +97,7 @@ export class LocalBridge implements ActualBridge {
   }
 
   public async getAccounts(): Promise<Account[]> {
-    if (!this.rpc) throw new BridgeError("Not connected");
+    if (!this.rpc) throw new BridgeError("AXB: Not connected");
 
     return await this.rpc.getAccounts();
   }
@@ -115,17 +115,19 @@ export class LocalBridge implements ActualBridge {
 
   // TODO: support partial update!
   public async updateTransaction(transaction: Transaction): Promise<void> {
-    if (!this.rpc) throw new BridgeError("Not connected");
+    if (!this.rpc) throw new BridgeError("AXB: Not connected");
     if (!transaction.id)
-      throw new BridgeError("Transaction ID required for update.");
+      throw new BridgeError("AXB: Transaction ID required for update.");
 
     await this.rpc.updateTransaction(transaction);
   }
 
   public async createTransaction(payload: ImportTransaction): Promise<void> {
-    if (!this.rpc) throw new BridgeError("Not connected");
+    if (!this.rpc) throw new BridgeError("AXB: Not connected");
     if (!payload.account) {
-      throw new BridgeContextError("Account ID is mandatory for creation.");
+      throw new BridgeContextError(
+        "AXB: Account ID is mandatory for creation.",
+      );
     }
     // Context check logic preserved
     if (
@@ -133,7 +135,7 @@ export class LocalBridge implements ActualBridge {
       this.internalState.context.accountId !== payload.account
     ) {
       throw new BridgeContextError(
-        `Current view (${this.internalState.context.accountId}) matches not target (${payload.account}).`,
+        `AXB: Current view (${this.internalState.context.accountId}) matches not target (${payload.account}).`,
       );
     }
 

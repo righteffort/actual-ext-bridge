@@ -75,7 +75,7 @@ const guestRpc: GuestRpcInterface = {
   async getTransactions() {
     const props = findActualProps();
     if (!props) {
-      throw new Error("Not connected");
+      throw new Error("AXB: Not connected");
     }
     return props.transactions || [];
   },
@@ -83,7 +83,7 @@ const guestRpc: GuestRpcInterface = {
   async getAccounts() {
     const props = findActualProps();
     if (!props) {
-      throw new Error("Not connected");
+      throw new Error("AXB: Not connected");
     }
     return props.accounts || [];
   },
@@ -91,7 +91,7 @@ const guestRpc: GuestRpcInterface = {
   async updateTransaction(transaction: Transaction) {
     const props = findActualProps();
     if (!props || !props.onSave) {
-      throw new Error("onSave not available");
+      throw new Error("AXB: onSave not available");
     }
     await props.onSave(transaction);
   },
@@ -99,11 +99,13 @@ const guestRpc: GuestRpcInterface = {
   async createTransaction(payload: ImportTransaction) {
     const props = findActualProps();
     if (!props || !props.onAdd) {
-      throw new Error("onAdd not available");
+      throw new Error("AXB: onAdd not available");
     }
 
     if (payload.imported_id && isDuplicate(props, payload.imported_id)) {
-      const error = new Error("Duplicate transaction detected") as Error & {
+      const error = new Error(
+        "AXB: Duplicate transaction detected",
+      ) as Error & {
         code: string;
         importedId: string;
       };
@@ -153,7 +155,7 @@ async function resolvePayee(
   name: string,
 ): Promise<string | undefined> {
   if (!props.payees || !Array.isArray(props.payees)) {
-    console.warn("ActualBridge: No payees found in props.");
+    console.warn("AXB: ActualBridge: No payees found in props.");
     return undefined;
   }
   // TODO we should maintain a cache!
@@ -165,7 +167,7 @@ async function resolvePayee(
     try {
       return await props.onCreatePayee(name);
     } catch (error) {
-      console.error("Failed to create payee", error);
+      console.error("AXB: Failed to create payee", error);
     }
   }
   return undefined;
@@ -216,7 +218,7 @@ function poll() {
 
   // Send state update via RPC
   rpc.onStateUpdate(currentState).catch((error) => {
-    console.warn("Failed to send state update:", error);
+    console.warn("AXB: Failed to send state update:", error);
   });
 }
 
@@ -224,7 +226,7 @@ function init() {
   // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
   window.setInterval(poll, 2000);
   poll();
-  console.log("ActualBridge: Guest Logic Injected.");
+  console.log("AXB: ActualBridge: Guest Logic Injected.");
 }
 
 init();

@@ -17,11 +17,11 @@ export class BridgeConnector {
     this.handleRuntimeMessage = this.handleRuntimeMessage.bind(this);
   }
 
-  public start(): void {
+  public async start() {
     browser.runtime.onMessage.addListener(this.handleRuntimeMessage);
     // Fetch our Tab ID immediately on start
     // TODO: try again periodically if it isn't available the first time around (race condition with background script startup?)
-    void this.fetchTabId();
+    await this.fetchTabId();
   }
 
   public registerBridge(bridge: LocalBridge): void {
@@ -56,7 +56,7 @@ export class BridgeConnector {
         this.myTabId = response.tabId;
       }
     } catch (e) {
-      console.error("Failed to fetch Tab ID", e);
+      console.error("AXB: Failed to fetch Tab ID", e);
     }
   }
 
@@ -65,7 +65,7 @@ export class BridgeConnector {
     _sender: browser.Runtime.MessageSender,
   ): Promise<unknown> | undefined {
     console.log(
-      `handleRuntimeMessage(${JSON.stringify(message)}) from ${JSON.stringify(_sender)}`,
+      `AXB: handleRuntimeMessage(${JSON.stringify(message)}) from ${JSON.stringify(_sender)}`,
     );
     const msg = message as ArbiterMessage;
     if (!msg || msg.type !== ARBITER_MESSAGE_TYPE) return undefined;
@@ -94,6 +94,7 @@ export class BridgeConnector {
 
   private async handlePrimaryChange(primaryId: number | null) {
     // Ensure we have our ID (retry if needed)
+    console.log(`AXB: handlePrimaryChange(${primaryId})`);
     if (this.myTabId === null) {
       await this.fetchTabId();
     }
@@ -113,10 +114,10 @@ export class BridgeConnector {
   }
 
   private startHeartbeat() {
-    console.log("startHeartbeat");
+    console.log("AXB: startHeartbeat");
     this.stopHeartbeat();
     this.heartbeatInterval = setInterval(() => {
-      console.log("sending heartbeat ...");
+      console.log("AXB: sending heartbeat ...");
       browser.runtime
         .sendMessage({
           type: ARBITER_MESSAGE_TYPE,
@@ -126,12 +127,12 @@ export class BridgeConnector {
           // Background likely dead.
           void this.handlePrimaryChange(null);
         });
-      console.log("... sent heartbeat");
+      console.log("AXB: ... sent heartbeat");
     }, 2000);
   }
 
   private stopHeartbeat() {
-    console.log("stopHeartbeat");
+    console.log("AXB: stopHeartbeat");
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;

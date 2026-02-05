@@ -94,12 +94,12 @@ export class RemoteBridge implements ActualBridge {
       error?: string;
     };
 
-    if (!response) throw new Error("No response from Arbiter");
+    if (!response) throw new Error("AXB: No response from Arbiter");
 
     if (response.success) {
       return response.data as T;
     } else {
-      throw new Error(response.error || "Proxy call failed");
+      throw new Error(response.error || "AXB: Proxy call failed");
     }
   }
 }
