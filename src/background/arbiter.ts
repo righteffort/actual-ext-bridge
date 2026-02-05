@@ -34,6 +34,7 @@ export class BridgeArbiter {
   }
 
   public start(): void {
+    console.log(`arbiter start`);
     browser.runtime.onMessage.addListener(this.handleMessage);
     browser.tabs.onRemoved.addListener(this.handleTabRemoved);
   }
@@ -59,6 +60,9 @@ export class BridgeArbiter {
     sender: browser.Runtime.MessageSender,
   ): Promise<unknown> | undefined {
     const msg = message as ArbiterMessageInterface;
+    console.log(
+      `arbiter handleMessage received ${JSON.stringify(message)} from ${JSON.stringify(sender)}`,
+    );
 
     // Allow simple ID request without strict typing if needed
     if (!msg || typeof msg !== "object") return undefined;

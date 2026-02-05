@@ -20,6 +20,7 @@ export class BridgeConnector {
   public start(): void {
     browser.runtime.onMessage.addListener(this.handleRuntimeMessage);
     // Fetch our Tab ID immediately on start
+    // TODO: try again periodically if it isn't available the first time around (race condition with background script startup?)
     void this.fetchTabId();
   }
 
@@ -63,6 +64,9 @@ export class BridgeConnector {
     message: unknown,
     _sender: browser.Runtime.MessageSender,
   ): Promise<unknown> | undefined {
+    console.log(
+      `handleRuntimeMessage(${JSON.stringify(message)}) from ${JSON.stringify(_sender)}`,
+    );
     const msg = message as ArbiterMessage;
     if (!msg || msg.type !== ARBITER_MESSAGE_TYPE) return undefined;
 
@@ -109,8 +113,10 @@ export class BridgeConnector {
   }
 
   private startHeartbeat() {
+    console.log("startHeartbeat");
     this.stopHeartbeat();
     this.heartbeatInterval = setInterval(() => {
+      console.log("sending heartbeat ...");
       browser.runtime
         .sendMessage({
           type: ARBITER_MESSAGE_TYPE,
@@ -120,10 +126,12 @@ export class BridgeConnector {
           // Background likely dead.
           void this.handlePrimaryChange(null);
         });
+      console.log("... sent heartbeat");
     }, 2000);
   }
 
   private stopHeartbeat() {
+    console.log("stopHeartbeat");
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
