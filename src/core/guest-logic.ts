@@ -137,10 +137,17 @@ const guestRpc: GuestRpcInterface = {
 };
 
 // Create birpc instance
+console.log("AXB: guest creating birpc...");
 const rpc = createBirpc<HostRpcInterface, GuestRpcInterface>(guestRpc, {
-  post: (data) => window.postMessage(data, "/"),
+  post: (data) => {
+    console.log(`AXB: guest window.postMessage(${JSON.stringify(data)})`);
+    window.postMessage(data, "/");
+  },
   on: (fn) => {
     const handler = (event: MessageEvent) => {
+      console.log(
+        `AXB: guest received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`,
+      );
       if (event.origin === window.origin) {
         fn(event.data);
       }
@@ -149,6 +156,7 @@ const rpc = createBirpc<HostRpcInterface, GuestRpcInterface>(guestRpc, {
     return () => window.removeEventListener("message", handler);
   },
 });
+console.log("AXB: ... guest created birpc");
 
 async function resolvePayee(
   props: ActualProps,
@@ -217,16 +225,18 @@ function poll() {
   };
 
   // Send state update via RPC
+  // console.log(`AXB: guest sending state ${JSON.stringify(currentState)}`);
   rpc.onStateUpdate(currentState).catch((error) => {
     console.warn("AXB: Failed to send state update:", error);
   });
+  // console.log(`AXB: guest sent state ${JSON.stringify(currentState)}`);
 }
 
 function init() {
   // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
   window.setInterval(poll, 2000);
   poll();
-  console.log("AXB: ActualBridge: Guest Logic Injected.");
+  console.log("AXB: ActualBridge: guest-logic:init complete.");
 }
 
 init();

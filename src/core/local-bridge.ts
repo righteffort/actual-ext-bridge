@@ -1,3 +1,4 @@
+import browser from "webextension-polyfill";
 import { createBirpc } from "birpc";
 import {
   BridgeConnectionError,
@@ -17,23 +18,17 @@ import type {
   ActualBridge,
 } from "../types";
 
-// @ts-expect-error - The plugin creates this virtual module
-import guestLogicScript from "./guest-logic.ts?inline-js";
-
 export class LocalBridge implements ActualBridge {
   private internalState: BridgeState = {
     connected: false,
     context: { type: "UNKNOWN", accountId: null },
   };
   private listeners = new Set<(state: BridgeState) => void>();
-  private baseUrl = "";
   private rpc: ReturnType<
     typeof createBirpc<GuestRpcInterface, HostRpcInterface>
   > | null = null;
 
-  public async connect(config: { baseUrl: string }): Promise<void> {
-    this.baseUrl = config.baseUrl;
-
+  public async connect(): Promise<void> {
     // Create RPC instance
     const hostRpc: HostRpcInterface = {
       onStateUpdate: async (state: BridgeState) => {
@@ -42,11 +37,18 @@ export class LocalBridge implements ActualBridge {
       },
     };
 
+    console.log("AXB: host creating birpc...");
     this.rpc = createBirpc<GuestRpcInterface, HostRpcInterface>(hostRpc, {
-      post: (data) => window.postMessage(data, this.baseUrl),
+      post: (data) => {
+        console.log(`AXB: host window.postMessage(${JSON.stringify(data)})`);
+        window.postMessage(data);
+      },
       on: (fn) => {
         const handler = (event: MessageEvent) => {
-          if (event.origin === this.baseUrl) {
+          console.log(
+            `AXB: host received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`,
+          );
+          if (event.origin === window.origin) {
             fn(event.data);
           }
         };
@@ -54,11 +56,17 @@ export class LocalBridge implements ActualBridge {
         return () => window.removeEventListener("message", handler);
       },
     });
+    console.log("AXB: .. host created birpc");
 
-    // Inject guest script
+    // Inject the main world script
+    // TODO: make parameterizable and plumb through from BridgeConnector.start
+    const scriptUrl = browser.runtime.getURL("src/content/guest-logic.js");
+    console.log(`AXB: injecting script from ${scriptUrl}`);
     const script = document.createElement("script");
-    script.textContent = guestLogicScript;
-    script.onload = () => script.remove();
+    script.src = scriptUrl;
+    script.onload = function () {
+      (this as HTMLScriptElement).remove();
+    };
     (document.head || document.documentElement).appendChild(script);
 
     try {
@@ -68,6 +76,7 @@ export class LocalBridge implements ActualBridge {
       throw new BridgeConnectionError(
         `AXB: Handshake failed. Is the URL correct? ${details}`,
       );
+      // try again later maybe?
     }
   }
 
@@ -161,7 +170,7 @@ export class LocalBridge implements ActualBridge {
     _originalTx: Transaction,
     _splits: Partial<Transaction>[],
   ): Promise<void> {
-    console.warn("splitTransaction not yet implemented");
+    console.warn("AXB: splitTransaction not yet implemented");
     return Promise.resolve();
     // TODO: actually implement, something like this:
     // if (!originalTx.id) {
@@ -207,6 +216,7 @@ export class LocalBridge implements ActualBridge {
   }
 
   private notifyListeners() {
+    console.log(`AXB: local-bridge notifying ${this.listeners.size} listeners`);
     this.listeners.forEach((l) => l(this.internalState));
   }
 }
