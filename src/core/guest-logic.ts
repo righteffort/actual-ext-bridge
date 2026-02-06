@@ -137,7 +137,6 @@ const guestRpc = {
       imported_id: payload.imported_id,
       imported_payee: payload.imported_payee,
       cleared: payload.cleared !== undefined ? payload.cleared : false,
-      subtransactions: payload.subtransactions,
     };
     if (payload.category) newTx["category"] = payload.category;
 

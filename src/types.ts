@@ -31,11 +31,6 @@ export interface ImportTransaction {
   notes?: string;
   imported_id?: string;
   cleared?: boolean;
-  subtransactions?: {
-    amount: number;
-    category?: string;
-    notes?: string;
-  }[];
 }
 
 export type AccountsEnum =
@@ -82,6 +77,7 @@ export interface ActualBridge {
 
   updateTransaction(transaction: Transaction): Promise<void>;
 
+  // Note: Doesn't support subtransactions.
   createTransaction(payload: ImportTransaction): Promise<void>;
 
   splitTransaction(
