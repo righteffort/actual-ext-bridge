@@ -1,95 +1,78 @@
 /**
- * The "Traffic Cop" running in the Background Service Worker.
- * Enforces the Single Master policy across multiple Actual Budget tabs.
+ * Proxies messages to the current primary Actual content script.
+ * TODO: rename accordingly
  */
 import browser from "webextension-polyfill";
 
-export const ARBITER_MESSAGE_TYPE_CONST = "ACTUAL_BRIDGE_ARBITER";
+export const ARBITER_MESSAGE_TYPE = "ACTUAL_BRIDGE_ARBITER";
 
-export enum ArbiterMessageTypeEnum {
-  HEARTBEAT = "HEARTBEAT",
+export enum ArbiterMessageType {
   CLAIM_PRIMARY = "CLAIM_PRIMARY",
-  PRIMARY_CHANGED = "PRIMARY_CHANGED",
   PROXY_REQUEST = "PROXY_REQUEST",
-  PROXY_RESPONSE = "PROXY_RESPONSE",
-  GET_TAB_ID = "GET_TAB_ID",
+  // PROXY_RESPONSE = "PROXY_RESPONSE",
 }
 
-export interface ArbiterMessageInterface<T = unknown> {
-  type: typeof ARBITER_MESSAGE_TYPE_CONST;
-  action: ArbiterMessageTypeEnum;
+export interface ArbiterMessage<T = unknown> {
+  type: typeof ARBITER_MESSAGE_TYPE;
+  action: ArbiterMessageType;
   payload?: T;
   requestId?: string;
 }
 
 export class BridgeArbiter {
   private primaryTabId: number | null = null;
-  private lastHeartbeatTime = 0;
-  private heartbeatTimeout: NodeJS.Timeout | null = null;
-  private static readonly TIMEOUT_MS = 5000;
 
   constructor() {
     this.handleMessage = this.handleMessage.bind(this);
-    this.handleTabRemoved = this.handleTabRemoved.bind(this);
   }
 
-  public start(): void {
+  /* public */ start(): void {
     console.log(`AXB: arbiter start`);
     browser.runtime.onMessage.addListener(this.handleMessage);
-    browser.tabs.onRemoved.addListener(this.handleTabRemoved);
   }
 
-  public getPrimaryId(): number | null {
+  async getPrimaryTabId(): Promise<number | null> {
+    if (!this.primaryTabId) {
+      const { primaryTabId } =
+        await browser.storage.session.get("primaryTabId");
+      if (typeof primaryTabId !== "number") {
+        return null;
+      }
+      this.primaryTabId = primaryTabId;
+    }
     return this.primaryTabId;
   }
 
-  public setPrimary(tabId: number): void {
+  /* public */ setPrimary(tabId: number): void {
     if (this.primaryTabId === tabId) return;
-
+    browser.storage.session.set({ primaryTabId: tabId });
     this.primaryTabId = tabId;
-    this.lastHeartbeatTime = Date.now();
-
-    // Broadcast the new Primary ID to ALL tabs
-    this.broadcastChange(tabId);
-    this.monitorHeartbeat();
   }
 
-  // Updated to return Promise (Polyfill style)
   private handleMessage(
     message: unknown,
     sender: browser.Runtime.MessageSender,
   ): Promise<unknown> | undefined {
-    const msg = message as ArbiterMessageInterface;
+    const msg = message as ArbiterMessage;
     console.log(
       `AXB: arbiter handleMessage received ${JSON.stringify(message)} from ${JSON.stringify(sender)}`,
     );
 
-    // Allow simple ID request without strict typing if needed
-    if (!msg || typeof msg !== "object") return undefined;
-
-    // Handle "Who Am I?" request from content scripts
-    if (msg.action === ArbiterMessageTypeEnum.GET_TAB_ID) {
-      return Promise.resolve({ tabId: sender.tab?.id || null });
-    }
-
-    // Strict protocol check for other messages
-    if (msg.type !== ARBITER_MESSAGE_TYPE_CONST) return undefined;
+    // if (!msg || typeof msg !== "object") return undefined;
+    if (msg?.type !== ARBITER_MESSAGE_TYPE) return undefined;
 
     const tabId = sender.tab?.id;
 
     switch (msg.action) {
-      case ArbiterMessageTypeEnum.HEARTBEAT:
-        if (tabId && tabId === this.primaryTabId) {
-          this.lastHeartbeatTime = Date.now();
-          this.monitorHeartbeat();
+      case ArbiterMessageType.CLAIM_PRIMARY:
+        if (!tabId) {
+          console.warn("AXB: Received CLAIM_PRIMARY message with no tab id");
+        } else {
+          this.setPrimary(tabId);
         }
         return undefined;
 
-      case ArbiterMessageTypeEnum.CLAIM_PRIMARY:
-        if (tabId) this.setPrimary(tabId);
-        return undefined;
-
-      case ArbiterMessageTypeEnum.PROXY_REQUEST:
+      case ArbiterMessageType.PROXY_REQUEST:
         return this.handleProxyRequest(msg);
 
       default:
@@ -97,61 +80,13 @@ export class BridgeArbiter {
     }
   }
 
-  private handleTabRemoved(tabId: number) {
-    if (tabId === this.primaryTabId) {
-      console.log(`AXB: [Arbiter] Primary tab ${tabId} closed.`);
-      this.primaryTabId = null;
-      this.broadcastChange(null);
-    }
-  }
-
-  private monitorHeartbeat() {
-    if (this.heartbeatTimeout) clearTimeout(this.heartbeatTimeout);
-    if (!this.primaryTabId) return;
-
-    this.heartbeatTimeout = setTimeout(() => {
-      if (Date.now() - this.lastHeartbeatTime > BridgeArbiter.TIMEOUT_MS) {
-        console.warn(
-          `AXB: [Arbiter] Primary tab ${this.primaryTabId} timed out.`,
-        );
-        this.primaryTabId = null;
-        this.broadcastChange(null);
-      }
-    }, BridgeArbiter.TIMEOUT_MS + 100);
-  }
-
-  private broadcastChange(newPrimaryId: number | null) {
-    const msg: ArbiterMessageInterface = {
-      type: ARBITER_MESSAGE_TYPE_CONST,
-      action: ArbiterMessageTypeEnum.PRIMARY_CHANGED,
-      payload: { primaryTabId: newPrimaryId },
-    };
-
-    // Send to all tabs
-    browser.tabs.query({}).then((tabs) => {
-      for (const tab of tabs) {
-        if (tab.id) {
-          browser.tabs.sendMessage(tab.id, msg).catch(() => {
-            // Ignore errors when sending to tabs
-          });
-        }
-      }
-    });
-
-    // Also notify UI (Side Panel)
-    browser.runtime.sendMessage(msg).catch(() => {
-      // Ignore errors when sending to UI
-    });
-  }
-
-  private async handleProxyRequest(
-    msg: ArbiterMessageInterface,
-  ): Promise<unknown> {
-    if (!this.primaryTabId) {
+  private async handleProxyRequest(msg: ArbiterMessage): Promise<unknown> {
+    const primaryTabId = await this.getPrimaryTabId();
+    if (!primaryTabId) {
       return { success: false, error: "No Primary Tab Connected" };
     }
     try {
-      return await browser.tabs.sendMessage(this.primaryTabId, msg);
+      return await browser.tabs.sendMessage(primaryTabId, msg);
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       return {
@@ -161,8 +96,3 @@ export class BridgeArbiter {
     }
   }
 }
-
-// Export aliases to match previous imports if needed, though they are usually imported from here.
-export const ARBITER_MESSAGE_TYPE = ARBITER_MESSAGE_TYPE_CONST;
-export const ArbiterMessageType = ArbiterMessageTypeEnum;
-export type ArbiterMessage = ArbiterMessageInterface;
