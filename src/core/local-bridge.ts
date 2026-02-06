@@ -62,10 +62,10 @@ export class LocalBridge implements ActualBridge {
       },
       on: (fn) => {
         const handler = (event: MessageEvent) => {
-          console.log(
-            `AXB: host received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`,
-          );
           if (event.origin === window.origin) {
+            console.log(
+              `AXB: host received message event.data=${JSON.stringify(event.data)}`,
+            );
             fn(event.data);
           }
         };
