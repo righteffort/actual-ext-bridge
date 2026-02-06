@@ -54,38 +54,28 @@ export class LocalBridge implements ActualBridge {
       },
     };
 
-    console.log("AXB: host creating birpc...");
     this.rpc = createBirpc<GuestRpcInterface, HostRpcInterface>(hostRpc, {
       post: (data) => {
         console.debug(`AXB: host window.postMessage(${JSON.stringify(data)})`);
-        window.postMessage({ ...data, axbTarget: "GUEST" }, "*"); // TODO: yikes!
+        window.postMessage({ ...data, axbTarget: "GUEST" });
       },
       on: (fn) => {
         const handler = (event: MessageEvent) => {
-          //          if (event.data.m) {
           console.debug(
-            `AXB: host received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`,
+            `AXB: host received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`, // TODO: remove
           );
-          // }
-          //          if (true || event.origin === window.origin) {  // TODO: yikes
-          // if (event.data.m) {
-          //   console.debug(
-          //     `AXB: host received message event.data=${JSON.stringify(event.data)}`,
-          //   );
-          // }
-          if (event?.data?.axbTarget === "HOST") {
-            // TODO: ???
-            fn(event.data);
-          } else {
-            console.debug(`AXB: host dropped ${JSON.stringify(event.data)}`);
+          if (event.origin === window.origin) {
+            if (event?.data?.axbTarget === "HOST") {
+              fn(event.data);
+            } else {
+              console.debug(`AXB: host dropped ${JSON.stringify(event.data)}`); // TODO: remove
+            }
           }
-          //          }
         };
         window.addEventListener("message", handler);
         return () => window.removeEventListener("message", handler);
       },
     });
-    console.log("AXB: .. host created birpc");
 
     // Inject the main world script
     // TODO: make parameterizable and plumb through from BridgeConnector.start
@@ -196,55 +186,6 @@ export class LocalBridge implements ActualBridge {
       }
       throw e;
     }
-  }
-
-  public async splitTransaction(
-    _originalTx: Transaction,
-    _splits: Partial<Transaction>[],
-  ): Promise<void> {
-    console.warn("AXB: splitTransaction not yet implemented");
-    return Promise.resolve();
-    // TODO: actually implement, something like this:
-    // if (!originalTx.id) {
-    //   throw new BridgeError("Original transaction ID is required for splitting.");
-    // }
-
-    // // Logic:
-    // // 1. We construct a new transaction object based on the original.
-    // // 2. We attach the 'subtransactions' array.
-    // // 3. We call updateTransaction (which calls onSave internally).
-    // // Actual Budget handles splits by updating the parent transaction's subtransactions field.
-
-    // // Validate splits sum? Optional, but Actual handles validation usually.
-    // // We just construct the payload.
-
-    // const updatedTx: Transaction = {
-    //   ...originalTx,
-    //   is_parent: true, // Mark as parent
-    //   subtransactions: splits as Transaction[], // Cast partials to full if backend accepts them, or we might need to merge defaults.
-    //   // Note: Actual's onSave usually expects the full structure.
-    //   // If splits are Partial, we might need to fill in gaps (like account/date from parent if missing).
-    // };
-
-    // // Fill in defaults for splits if missing
-    // updatedTx.subtransactions = splits.map(split => ({
-    //     ...split,
-    //     // Inherit from parent if not specified
-    //     account: split.account || originalTx.account,
-    //     date: split.date || originalTx.date,
-    //     // ID should be generated or exist. If new, it might be null/undefined?
-    //     // Actual's internal logic usually handles new subtransactions if they lack IDs?
-    //     // Or we should generate UUIDs.
-    //     // For safety in this bridge, we assume the caller provided IDs or the backend handles it.
-    // } as Transaction));
-
-    // await this.updateTransaction(updatedTx);
-  }
-
-  public disconnect(): void {
-    this.rpc = null;
-    this.listeners.clear();
-    this.internalState.connected = false;
   }
 
   private notifyListeners() {

@@ -33,22 +33,20 @@ interface ActualProps {
 function findActualProps(): ActualProps | null {
   const anchor = document.querySelector('div[data-testid="transaction-table"]');
   if (!anchor) {
-    console.warn(
-      "AXB: anchor not found, all is lost. Well, just not on transactions npage.",
-    );
+    // Ideally this just means we're not currently on a transactions page.
     return null;
   }
 
   const key = Object.keys(anchor).find((k) => k.startsWith("__reactFiber"));
   if (!key) {
-    console.warn("AXB: key not found, all is lost");
+    console.warn("AXB: (findActualProps) key not found");
     return null;
   }
 
   // @ts-expect-error - Dynamic property access on DOM element is necessary for Fiber discovery
   let fiber: FiberNode | undefined = anchor[key];
   if (!fiber) {
-    console.warn("AXB: fiber not found, all is lost");
+    console.warn("AXB: (findActualProps) fiber not found");
     return null;
   }
 
@@ -71,14 +69,13 @@ function findActualProps(): ActualProps | null {
     }
     attempts++;
   }
-  console.warn("AXB: props not found, all is lost");
+  console.warn("AXB: (findActualProps) props not found in transaction table");
   return null;
 }
 
 // RPC implementation for the guest side
 const guestRpc = {
   async getTransactions() {
-    console.log("AXB: (guest) getTransactions");
     const props = findActualProps();
     if (!props) {
       throw new Error("AXB: Not connected");
@@ -87,7 +84,6 @@ const guestRpc = {
   },
 
   async getAccounts() {
-    console.log("AXB: (guest) getAccounts");
     const props = findActualProps();
     if (!props) {
       throw new Error("AXB: Not connected");
@@ -96,7 +92,6 @@ const guestRpc = {
   },
 
   async updateTransaction(transaction: Transaction) {
-    console.log("AXB: (guest) updateTransaction");
     const props = findActualProps();
     if (!props || !props.onSave) {
       throw new Error("AXB: onSave not available");
@@ -105,7 +100,6 @@ const guestRpc = {
   },
 
   async createTransaction(payload: ImportTransaction) {
-    console.log("AXB: (guest) createTransaction");
     const props = findActualProps();
     if (!props || !props.onAdd) {
       throw new Error("AXB: onAdd not available");
@@ -145,36 +139,27 @@ const guestRpc = {
 } satisfies GuestRpcInterface; // TODO: I don't understand this
 
 // Create birpc instance
-console.log("AXB: guest creating birpc...");
 const rpc = createBirpc<HostRpcInterface, GuestRpcInterface>(guestRpc, {
   post: (data) => {
-    console.debug(`AXB: guest window.postMessage(${JSON.stringify(data)})`);
-    window.postMessage({ ...data, axbTarget: "HOST" }, "*"); // TOOD: yikes! // '*' ? something safer? '/' didn't work?
+    window.postMessage({ ...data, axbTarget: "HOST" });
   },
   on: (fn) => {
     const handler = (event: MessageEvent) => {
-      //      if (true || event.origin === window.origin) {  // TODO: yikes
-      console.debug(
-        `AXB: guest received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`,
-      );
-      // if (event.data.m) {
-      //   console.debug(
-      //     `AXB: guest received message event.data=${JSON.stringify(event.data)}`,
-      //   );
-      // }
-      if (event?.data?.axbTarget === "GUEST") {
-        // TODO: ???
-        fn(event.data);
-      } else {
-        console.debug(`AXB: guest dropped ${JSON.stringify(event.data)}`);
+      if (event.origin === window.origin) {
+        console.debug(
+          `AXB: guest received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`, // TODO: remove
+        );
+        if (event?.data?.axbTarget === "GUEST") {
+          fn(event.data);
+        } else {
+          console.debug(`AXB: guest dropped ${JSON.stringify(event.data)}`); // TODO: remove
+        }
       }
-      //      }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
   },
 });
-console.log("AXB: ... guest created birpc");
 
 async function resolvePayee(
   props: ActualProps,
@@ -236,9 +221,6 @@ function determineContext(): BridgeContext {
 
 function poll() {
   const props = findActualProps();
-  if (!props) {
-    console.debug(`AXB: THROMER OH NO findActualProps() returned ${props}`);
-  }
   const currentlyConnected = !!props;
 
   const currentState: BridgeState = {
@@ -246,22 +228,18 @@ function poll() {
     context: determineContext(),
   };
 
-  // Send state update via RPC
-  // console.log(`AXB: guest sending state ${JSON.stringify(currentState)}`);
   rpc.onStateUpdate(currentState).catch((e) => {
     const msg = e instanceof Error ? e.message : String(e);
     console.warn("AXB: Failed to send state update:", msg);
   });
-  // console.log(`AXB: guest sent state ${JSON.stringify(currentState)}`);
 }
 
 function init() {
-  // Signal to host that we're ready
   rpc
     .handshake()
     .then(() => {
-      console.log("AXB: handshake complete, starting polling");
-      poll(); // Start polling after handshake
+      console.log("AXB: handshake complete");
+      poll();
       // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
       window.setInterval(poll, 2000);
     })

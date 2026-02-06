@@ -48,13 +48,6 @@ export class RemoteBridge implements ActualBridge {
     return this.proxyCall("createTransaction", [payload]);
   }
 
-  public async splitTransaction(
-    originalTx: Transaction,
-    splits: Partial<Transaction>[],
-  ): Promise<void> {
-    return this.proxyCall("splitTransaction", [originalTx, splits]);
-  }
-
   public subscribe(callback: (state: BridgeState) => void): () => void {
     // TODO: Anywhere we have interval-based logic I'm suspicious. But anyway ...
     const timer = setInterval(async () => {
@@ -80,9 +73,9 @@ export class RemoteBridge implements ActualBridge {
     return this.proxyCall("state", []);
   }
 
-  public disconnect(): void {
-    // No-op remotely
-  }
+  // public disconnect(): void {
+  //   // No-op remotely
+  // }
 
   private async proxyCall<T>(method: string, args: unknown[]): Promise<T> {
     const msg: ArbiterMessage = {

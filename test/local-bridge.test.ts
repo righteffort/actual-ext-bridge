@@ -32,7 +32,7 @@ describe("LocalBridge", () => {
   let messageHandlers: ((event: MessageEvent) => void)[] = [];
 
   afterEach(() => {
-    bridge.disconnect();
+    // bridge.disconnect();
     vi.restoreAllMocks();
     // Clean up all message handlers registered during tests
     messageHandlers.forEach((handler) => {

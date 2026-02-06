@@ -1,5 +1,5 @@
 /**
- * Core type definitions for the Actual Budget Bridge.
+ * Core type definitions.
  */
 
 export interface Transaction {
@@ -53,8 +53,7 @@ export interface Account {
 }
 
 /**
- * LIGHTWEIGHT state snapshot.
- * Does NOT contain the full lists of transactions or accounts.
+ * State snapshot.
  */
 export interface BridgeState {
   connected: boolean;
@@ -65,8 +64,6 @@ export interface BridgeState {
  * Shared interface for both Local (Content Script) and Remote (Background/UI) bridges.
  */
 export interface ActualBridge {
-  // connect(): Promise<void>;  // TODO: not sure this belongs in the interface
-
   getTransactions(
     predicate?: (t: Transaction) => boolean,
   ): Promise<Transaction[]>;
@@ -80,14 +77,7 @@ export interface ActualBridge {
   // Note: Doesn't support subtransactions.
   createTransaction(payload: ImportTransaction): Promise<void>;
 
-  splitTransaction(
-    originalTx: Transaction,
-    splits: Partial<Transaction>[],
-  ): Promise<void>;
-
   subscribe(callback: (state: BridgeState) => void): () => void;
 
   state(): Promise<BridgeState>;
-
-  disconnect?(): void; // Optional on RemoteBridge usually, but good to have
 }
