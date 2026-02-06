@@ -76,9 +76,9 @@ function findActualProps(): ActualProps | null {
 }
 
 // RPC implementation for the guest side
-const guestRpc: GuestRpcInterface = {
+const guestRpc = {
   async getTransactions() {
-    console.log("AXB: getTransactions");
+    console.log("AXB: (guest) getTransactions");
     const props = findActualProps();
     if (!props) {
       throw new Error("AXB: Not connected");
@@ -87,7 +87,7 @@ const guestRpc: GuestRpcInterface = {
   },
 
   async getAccounts() {
-    console.log("AXB: getAccounts");
+    console.log("AXB: (guest) getAccounts");
     const props = findActualProps();
     if (!props) {
       throw new Error("AXB: Not connected");
@@ -96,7 +96,7 @@ const guestRpc: GuestRpcInterface = {
   },
 
   async updateTransaction(transaction: Transaction) {
-    console.log("AXB: updateTransaction");
+    console.log("AXB: (guest) updateTransaction");
     const props = findActualProps();
     if (!props || !props.onSave) {
       throw new Error("AXB: onSave not available");
@@ -105,7 +105,7 @@ const guestRpc: GuestRpcInterface = {
   },
 
   async createTransaction(payload: ImportTransaction) {
-    console.log("AXB: createTransaction");
+    console.log("AXB: (guest) createTransaction");
     const props = findActualProps();
     if (!props || !props.onAdd) {
       throw new Error("AXB: onAdd not available");
@@ -143,25 +143,33 @@ const guestRpc: GuestRpcInterface = {
 
     await props.onAdd([newTx]);
   },
-};
+} satisfies GuestRpcInterface; // TODO: I don't understand this
 
 // Create birpc instance
 console.log("AXB: guest creating birpc...");
 const rpc = createBirpc<HostRpcInterface, GuestRpcInterface>(guestRpc, {
   post: (data) => {
-    console.log(`AXB: guest window.postMessage(${JSON.stringify(data)})`);
-    window.postMessage(data, "/");
+    console.debug(`AXB: guest window.postMessage(${JSON.stringify(data)})`);
+    window.postMessage({ ...data, axbTarget: "HOST" }, "*"); // TOOD: yikes! // '*' ? something safer? '/' didn't work?
   },
   on: (fn) => {
     const handler = (event: MessageEvent) => {
-      if (event.origin === window.origin) {
-        if (event.data.m) {
-          console.log(
-            `AXB: guest received message event.data=${JSON.stringify(event.data)}`,
-          );
-        }
+      //      if (true || event.origin === window.origin) {  // TODO: yikes
+      console.debug(
+        `AXB: guest received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`,
+      );
+      // if (event.data.m) {
+      //   console.debug(
+      //     `AXB: guest received message event.data=${JSON.stringify(event.data)}`,
+      //   );
+      // }
+      if (event?.data?.axbTarget === "GUEST") {
+        // TODO: ???
         fn(event.data);
+      } else {
+        console.debug(`AXB: guest dropped ${JSON.stringify(event.data)}`);
       }
+      //      }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
@@ -185,8 +193,9 @@ async function resolvePayee(
   if (typeof props.onCreatePayee === "function") {
     try {
       return await props.onCreatePayee(name);
-    } catch (error) {
-      console.error("AXB: Failed to create payee", error);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("AXB: Failed to create payee:", msg);
     }
   }
   return undefined;
@@ -229,7 +238,7 @@ function determineContext(): BridgeContext {
 function poll() {
   const props = findActualProps();
   if (!props) {
-    console.log(`AXB: THROMER OH NO findActualProps() returned ${props}`);
+    console.debug(`AXB: THROMER OH NO findActualProps() returned ${props}`);
   }
   const currentlyConnected = !!props;
 
@@ -240,8 +249,9 @@ function poll() {
 
   // Send state update via RPC
   // console.log(`AXB: guest sending state ${JSON.stringify(currentState)}`);
-  rpc.onStateUpdate(currentState).catch((error) => {
-    console.warn("AXB: Failed to send state update:", error);
+  rpc.onStateUpdate(currentState).catch((e) => {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn("AXB: Failed to send state update:", msg);
   });
   // console.log(`AXB: guest sent state ${JSON.stringify(currentState)}`);
 }
@@ -256,8 +266,9 @@ function init() {
       // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
       window.setInterval(poll, 2000);
     })
-    .catch((error) => {
-      console.error("AXB: handshake failed:", error);
+    .catch((e) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("AXB: handshake failed:", msg);
     });
 
   console.log("AXB: ActualBridge: guest-logic:init complete.");

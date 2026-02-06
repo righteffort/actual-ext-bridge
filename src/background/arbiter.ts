@@ -54,7 +54,7 @@ export class BridgeArbiter {
     sender: browser.Runtime.MessageSender,
   ): Promise<unknown> | undefined {
     const msg = message as ArbiterMessage;
-    console.log(
+    console.debug(
       `AXB: arbiter handleMessage received ${JSON.stringify(message)} from ${JSON.stringify(sender)}`,
     );
 
@@ -87,11 +87,12 @@ export class BridgeArbiter {
     }
     try {
       return await browser.tabs.sendMessage(primaryTabId, msg);
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(`AXB: ${msg}`);
       return {
         success: false,
-        error: errorMsg || "Failed to reach Primary Tab",
+        error: `Failed to reach Primary Tab ${primaryTabId}: ${msg}`,
       };
     }
   }

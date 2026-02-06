@@ -60,11 +60,12 @@ export class RemoteBridge implements ActualBridge {
     const timer = setInterval(async () => {
       try {
         const s = await this.proxyCall<BridgeState>("state", []);
-        console.log(
+        console.debug(
           `remote subscribe received ${JSON.stringify(s)} from local.state`,
         );
         callback(s);
       } catch {
+        // TODO: perhaps log something here?
         callback({
           connected: false,
           context: { type: "UNKNOWN", accountId: null },

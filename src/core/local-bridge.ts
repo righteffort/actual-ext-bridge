@@ -57,19 +57,29 @@ export class LocalBridge implements ActualBridge {
     console.log("AXB: host creating birpc...");
     this.rpc = createBirpc<GuestRpcInterface, HostRpcInterface>(hostRpc, {
       post: (data) => {
-        console.log(`AXB: host window.postMessage(${JSON.stringify(data)})`);
-        window.postMessage(data);
+        console.debug(`AXB: host window.postMessage(${JSON.stringify(data)})`);
+        window.postMessage({ ...data, axbTarget: "GUEST" }, "*"); // TODO: yikes!
       },
       on: (fn) => {
         const handler = (event: MessageEvent) => {
-          if (event.origin === window.origin) {
-            if (event.data.m) {
-              console.log(
-                `AXB: host received message event.data=${JSON.stringify(event.data)}`,
-              );
-            }
+          //          if (event.data.m) {
+          console.debug(
+            `AXB: host received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`,
+          );
+          // }
+          //          if (true || event.origin === window.origin) {  // TODO: yikes
+          // if (event.data.m) {
+          //   console.debug(
+          //     `AXB: host received message event.data=${JSON.stringify(event.data)}`,
+          //   );
+          // }
+          if (event?.data?.axbTarget === "HOST") {
+            // TODO: ???
             fn(event.data);
+          } else {
+            console.debug(`AXB: host dropped ${JSON.stringify(event.data)}`);
           }
+          //          }
         };
         window.addEventListener("message", handler);
         return () => window.removeEventListener("message", handler);
@@ -93,9 +103,9 @@ export class LocalBridge implements ActualBridge {
       await handshakePromise;
     } catch (e) {
       const details = e instanceof Error ? e.message : String(e);
-      throw new BridgeConnectionError(
-        `AXB: Connection failed. Is the URL correct? ${details}`,
-      );
+      const msg = `Connection failed. Is the URL correct? ${details}`;
+      console.warn(`AXB: ${msg}`);
+      throw new BridgeConnectionError(`AXB: ${msg}`);
     }
   }
 
@@ -115,9 +125,12 @@ export class LocalBridge implements ActualBridge {
   public async getTransactions(
     predicate?: (t: Transaction) => boolean,
   ): Promise<Transaction[]> {
+    console.log("AXB: (host) getTransactions");
     if (!this.rpc) throw new BridgeError("AXB: Not connected");
 
+    console.log(`AXB: this.rpc keys ${JSON.stringify(Object.keys(this.rpc))}`);
     const all = await this.rpc.getTransactions();
+    console.log("AXB: (host) guest.getTransactions returned"); // not reached!
     if (predicate) {
       return all.filter(predicate);
     }
@@ -169,19 +182,19 @@ export class LocalBridge implements ActualBridge {
 
     try {
       await this.rpc.createTransaction(payload);
-    } catch (error: unknown) {
+    } catch (e) {
       if (
-        error instanceof Error &&
-        "code" in error &&
-        (error as Error & { code: string }).code === "DUPLICATE"
+        e instanceof Error &&
+        "code" in e &&
+        (e as Error & { code: string }).code === "DUPLICATE"
       ) {
         throw new BridgeDuplicateError(
-          (error as Error & { importedId?: string }).importedId ||
+          (e as Error & { importedId?: string }).importedId ||
             payload.imported_id ||
             "unknown",
         );
       }
-      throw error;
+      throw e;
     }
   }
 
@@ -235,7 +248,9 @@ export class LocalBridge implements ActualBridge {
   }
 
   private notifyListeners() {
-    console.log(`AXB: local-bridge notifying ${this.listeners.size} listeners`);
+    console.debug(
+      `AXB: local-bridge notifying ${this.listeners.size} listeners`,
+    );
     this.listeners.forEach((l) => l(this.internalState));
   }
 }

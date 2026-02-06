@@ -59,6 +59,7 @@ export default defineConfig({
     sidecarScriptPlugin()
   ],
   build: {
+    minify: false,
     lib: {
       entry: path.resolve(__dirname, "src/index.ts"),
       name: "ActualExtLib",

@@ -27,6 +27,10 @@ export class BridgeConnector {
         console.log(`AXB: obtained lock ${lock.name}`);
         this.localBridge.connect();
         browser.runtime.onMessage.addListener(this.handleRuntimeMessage);
+        browser.runtime.sendMessage({
+          type: ARBITER_MESSAGE_TYPE,
+          action: ArbiterMessageType.CLAIM_PRIMARY,
+        });
         return new Promise(() => {
           // Hold the lock forever.
         });
@@ -39,7 +43,7 @@ export class BridgeConnector {
     message: unknown,
     _sender: browser.Runtime.MessageSender,
   ): Promise<unknown> | undefined {
-    console.log(
+    console.debug(
       `AXB: handleRuntimeMessage(${JSON.stringify(message)}) from ${JSON.stringify(_sender)}`,
     );
     const msg = message as ArbiterMessage;
@@ -69,15 +73,20 @@ export class BridgeConnector {
     try {
       // @ts-expect-error - Dynamic dispatch
       if (typeof this.localBridge[req.method] === "function") {
+        console.log(
+          // @ts-expect-error - Dynamic dispatch
+          `AXB bridge-connector.handleProxyRequest calling localBridge.${req.method} ... localBridge[req.method]=${this.localBridge[req.method]}`,
+        );
         // @ts-expect-error - Dynamic dispatch
         const result = await this.localBridge[req.method](...req.args);
         return { success: true, data: result };
       } else {
         return { success: false, error: `Method ${req.method} not found` };
       }
-    } catch (e: unknown) {
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      return { success: false, error: errorMsg };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(`AXB: ${msg}`);
+      return { success: false, error: msg };
     }
   }
 }
