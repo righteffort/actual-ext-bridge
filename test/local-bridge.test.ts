@@ -75,7 +75,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
 
     // Verify script tag was created
     const script = document.head.querySelector("script");
@@ -104,7 +104,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
     const txs = await bridge.getTransactions();
 
     expect(txs).toHaveLength(1);
@@ -132,7 +132,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
     const accounts = await bridge.getAccounts();
 
     expect(accounts).toHaveLength(1);
@@ -160,7 +160,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
     const account = await bridge.getAccountByName("savings"); // Case insensitive
     expect(account).toBeTruthy();
     expect(account?.id).toBe("acc-1");
@@ -187,7 +187,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
 
     const transaction = {
       id: "tx-123",
@@ -216,7 +216,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
 
     const transactionWithoutId = {
       account: "acc-1",
@@ -250,7 +250,7 @@ describe("LocalBridge", () => {
   //     // ... (Handshake handling if needed, usually mocked in beforeEach or helper)
   //   });
 
-  //   await bridge.connect({ baseUrl });
+  //   await bridge.connect();
 
   //   const original = {
   //     id: "tx-parent",
@@ -290,7 +290,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
 
     const importTransaction = {
       account: "acc-1",
@@ -320,7 +320,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
 
     const transactionWithoutAccount = {
       date: "2024-01-01",
@@ -362,7 +362,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
 
     // Wait a bit for the state update to be processed
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -408,7 +408,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
 
     const duplicateTransaction = {
       account: "acc-1",
@@ -456,7 +456,7 @@ describe("LocalBridge", () => {
 
     addMessageHandler(messageHandler);
 
-    await bridge.connect({ baseUrl });
+    await bridge.connect();
 
     const transactionForAnyAccount = {
       account: "acc-2",

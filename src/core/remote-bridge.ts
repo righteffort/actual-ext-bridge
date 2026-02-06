@@ -17,9 +17,10 @@ export class RemoteBridge implements ActualBridge {
     void tabId;
   }
 
-  public async connect(config: { baseUrl: string }): Promise<void> {
-    return this.proxyCall("connect", [config]);
-  }
+  // TODO: i don't think this makes much sense.
+  // public async connect(): Promise<void> {
+  //   return this.proxyCall("connect", []);
+  // }
 
   public async getTransactions(
     predicate?: (t: Transaction) => boolean,
@@ -55,6 +56,7 @@ export class RemoteBridge implements ActualBridge {
   }
 
   public subscribe(callback: (state: BridgeState) => void): () => void {
+    // TODO: Anywhere we have interval-based logic I'm suspicious.
     const timer = setInterval(async () => {
       try {
         const s = await this.proxyCall<BridgeState>("state", []);

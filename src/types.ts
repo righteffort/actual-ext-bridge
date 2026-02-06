@@ -70,7 +70,7 @@ export interface BridgeState {
  * Shared interface for both Local (Content Script) and Remote (Background/UI) bridges.
  */
 export interface ActualBridge {
-  connect(config: { baseUrl: string }): Promise<void>;
+  // connect(): Promise<void>;  // TODO: not sure this belongs in the interface
 
   getTransactions(
     predicate?: (t: Transaction) => boolean,

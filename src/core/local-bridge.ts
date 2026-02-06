@@ -34,7 +34,11 @@ export class LocalBridge implements ActualBridge {
     const handshakePromise = new Promise<void>((resolve, reject) => {
       handshakeResolve = resolve;
       setTimeout(() => {
-        reject(new BridgeConnectionError("Guest script failed to initialize within timeout"));
+        reject(
+          new BridgeConnectionError(
+            "Guest script failed to initialize within timeout",
+          ),
+        );
       }, 5000);
     });
 

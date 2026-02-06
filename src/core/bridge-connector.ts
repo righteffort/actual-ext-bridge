@@ -1,3 +1,5 @@
+// Content script logic
+
 import browser from "webextension-polyfill";
 import {
   ARBITER_MESSAGE_TYPE,
@@ -7,22 +9,14 @@ import {
 import { LocalBridge } from "./local-bridge";
 
 export class BridgeConnector {
-  // private isPrimary = false;
-  // private myTabId: number | null = null;
-  // private heartbeatInterval: NodeJS.Timeout | null = null;
-  // private listeners = new Set<(isPrimary: boolean) => void>();
-  private localBridge: LocalBridge | null = null;
+  private localBridge: LocalBridge = new LocalBridge();
 
   constructor() {
     this.handleRuntimeMessage = this.handleRuntimeMessage.bind(this);
   }
 
+  // Note that this never resolves, so the caller should not await.
   public async start() {
-    // // Fetch our Tab ID immediately on start
-    // // TODO: try again periodically if it isn't available the first time around (race condition with background script startup?)
-    // console.log("AXB: calling fetchTabId...");
-    // await this.fetchTabId();
-    // console.log("AXB: called fetchTabId...");
     console.log("AXB: trying to acquire lock...");
     await navigator.locks.request(
       `${browser.runtime.id}-super-duper-lock`,
@@ -31,14 +25,14 @@ export class BridgeConnector {
           throw new Error("AXB: how can lock be falsy?");
         }
         console.log(`AXB: obtained lock ${lock.name}`);
-        this.localBridge = new LocalBridge();
+        this.localBridge.connect();
         browser.runtime.onMessage.addListener(this.handleRuntimeMessage);
         return new Promise(() => {
-          // Optional: If you ever needed to voluntarily resign, you would call resolve()
-          // For now, we just hang here.
+          // Hold the lock forever.
         });
       },
     );
+    console.log("AXB: bridge-connector start done");
   }
 
   private handleRuntimeMessage(

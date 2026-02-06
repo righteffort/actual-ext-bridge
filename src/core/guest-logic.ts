@@ -229,15 +229,18 @@ function poll() {
 
 function init() {
   // Signal to host that we're ready
-  rpc.handshake().then(() => {
-    console.log("AXB: handshake complete, starting polling");
-    poll(); // Start polling after handshake
-    // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
-    window.setInterval(poll, 2000);
-  }).catch((error) => {
-    console.error("AXB: handshake failed:", error);
-  });
-  
+  rpc
+    .handshake()
+    .then(() => {
+      console.log("AXB: handshake complete, starting polling");
+      poll(); // Start polling after handshake
+      // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
+      window.setInterval(poll, 2000);
+    })
+    .catch((error) => {
+      console.error("AXB: handshake failed:", error);
+    });
+
   console.log("AXB: ActualBridge: guest-logic:init complete.");
 }
 
