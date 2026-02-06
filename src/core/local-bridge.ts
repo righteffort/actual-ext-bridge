@@ -29,11 +29,24 @@ export class LocalBridge implements ActualBridge {
   > | null = null;
 
   public async connect(): Promise<void> {
+    // Wait for guest to signal it's ready
+    let handshakeResolve: () => void;
+    const handshakePromise = new Promise<void>((resolve, reject) => {
+      handshakeResolve = resolve;
+      setTimeout(() => {
+        reject(new BridgeConnectionError("Guest script failed to initialize within timeout"));
+      }, 5000);
+    });
+
     // Create RPC instance
     const hostRpc: HostRpcInterface = {
       onStateUpdate: async (state: BridgeState) => {
         this.internalState = state;
         this.notifyListeners();
+      },
+      handshake: async () => {
+        handshakeResolve();
+        return { success: true };
       },
     };
 
@@ -69,14 +82,14 @@ export class LocalBridge implements ActualBridge {
     };
     (document.head || document.documentElement).appendChild(script);
 
+    // Wait for handshake
     try {
-      await this.rpc.handshake();
+      await handshakePromise;
     } catch (e) {
       const details = e instanceof Error ? e.message : String(e);
       throw new BridgeConnectionError(
-        `AXB: Handshake failed. Is the URL correct? ${details}`,
+        `AXB: Connection failed. Is the URL correct? ${details}`,
       );
-      // try again later maybe?
     }
   }
 

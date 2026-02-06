@@ -67,11 +67,6 @@ function findActualProps(): ActualProps | null {
 
 // RPC implementation for the guest side
 const guestRpc: GuestRpcInterface = {
-  async handshake() {
-    poll(); // Start polling when handshake completes
-    return { success: true };
-  },
-
   async getTransactions() {
     const props = findActualProps();
     if (!props) {
@@ -233,9 +228,16 @@ function poll() {
 }
 
 function init() {
-  // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
-  window.setInterval(poll, 2000);
-  poll();
+  // Signal to host that we're ready
+  rpc.handshake().then(() => {
+    console.log("AXB: handshake complete, starting polling");
+    poll(); // Start polling after handshake
+    // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
+    window.setInterval(poll, 2000);
+  }).catch((error) => {
+    console.error("AXB: handshake failed:", error);
+  });
+  
   console.log("AXB: ActualBridge: guest-logic:init complete.");
 }
 
