@@ -21,7 +21,23 @@ export class BridgeConnector {
     browser.runtime.onMessage.addListener(this.handleRuntimeMessage);
     // Fetch our Tab ID immediately on start
     // TODO: try again periodically if it isn't available the first time around (race condition with background script startup?)
+    console.log("AXB: calling fetchTabId...");
     await this.fetchTabId();
+    console.log("AXB: called fetchTabId...");
+    console.log("AXB: trying to acquire lock...");
+    await navigator.locks.request(
+      `${browser.runtime.id}-super-duper-lock`,
+      async (lock) => {
+        if (!lock) {
+          throw new Error("AXB: how can lock be falsy?");
+        }
+        console.log(`AXB: obtained lock ${lock.name}`);
+        return new Promise(() => {
+          // Optional: If you ever needed to voluntarily resign, you would call resolve()
+          // For now, we just hang here.
+        });
+      },
+    );
   }
 
   public registerBridge(bridge: LocalBridge): void {
