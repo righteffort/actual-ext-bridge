@@ -56,10 +56,13 @@ export class RemoteBridge implements ActualBridge {
   }
 
   public subscribe(callback: (state: BridgeState) => void): () => void {
-    // TODO: Anywhere we have interval-based logic I'm suspicious.
+    // TODO: Anywhere we have interval-based logic I'm suspicious. But anyway ...
     const timer = setInterval(async () => {
       try {
         const s = await this.proxyCall<BridgeState>("state", []);
+        console.log(
+          `remote subscribe received ${JSON.stringify(s)} from local.state`,
+        );
         callback(s);
       } catch {
         callback({
@@ -72,11 +75,8 @@ export class RemoteBridge implements ActualBridge {
     return () => clearInterval(timer);
   }
 
-  public state(): BridgeState {
-    return {
-      connected: false,
-      context: { type: "UNKNOWN", accountId: null },
-    };
+  public state(): Promise<BridgeState> {
+    return this.proxyCall("state", []);
   }
 
   public disconnect(): void {

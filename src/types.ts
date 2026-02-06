@@ -91,7 +91,7 @@ export interface ActualBridge {
 
   subscribe(callback: (state: BridgeState) => void): () => void;
 
-  state(): BridgeState;
+  state(): Promise<BridgeState>;
 
   disconnect?(): void; // Optional on RemoteBridge usually, but good to have
 }

@@ -31,17 +31,26 @@ interface ActualProps {
  * Returns React props to use to interact with the Actual Web App.
  */
 function findActualProps(): ActualProps | null {
-  const anchor = document.querySelector(
-    ".recs-table-row, .recs-table-container",
-  );
-  if (!anchor) return null;
+  const anchor = document.querySelector('div[data-testid="transaction-table"]');
+  if (!anchor) {
+    console.warn(
+      "AXB: anchor not found, all is lost. Well, just not on transactions npage.",
+    );
+    return null;
+  }
 
   const key = Object.keys(anchor).find((k) => k.startsWith("__reactFiber"));
-  if (!key) return null;
+  if (!key) {
+    console.warn("AXB: key not found, all is lost");
+    return null;
+  }
 
   // @ts-expect-error - Dynamic property access on DOM element is necessary for Fiber discovery
   let fiber: FiberNode | undefined = anchor[key];
-  if (!fiber) return null;
+  if (!fiber) {
+    console.warn("AXB: fiber not found, all is lost");
+    return null;
+  }
 
   let attempts = 0;
   while (fiber && attempts < 50) {
@@ -62,12 +71,14 @@ function findActualProps(): ActualProps | null {
     }
     attempts++;
   }
+  console.warn("AXB: props not found, all is lost");
   return null;
 }
 
 // RPC implementation for the guest side
 const guestRpc: GuestRpcInterface = {
   async getTransactions() {
+    console.log("AXB: getTransactions");
     const props = findActualProps();
     if (!props) {
       throw new Error("AXB: Not connected");
@@ -76,6 +87,7 @@ const guestRpc: GuestRpcInterface = {
   },
 
   async getAccounts() {
+    console.log("AXB: getAccounts");
     const props = findActualProps();
     if (!props) {
       throw new Error("AXB: Not connected");
@@ -84,6 +96,7 @@ const guestRpc: GuestRpcInterface = {
   },
 
   async updateTransaction(transaction: Transaction) {
+    console.log("AXB: updateTransaction");
     const props = findActualProps();
     if (!props || !props.onSave) {
       throw new Error("AXB: onSave not available");
@@ -92,6 +105,7 @@ const guestRpc: GuestRpcInterface = {
   },
 
   async createTransaction(payload: ImportTransaction) {
+    console.log("AXB: createTransaction");
     const props = findActualProps();
     if (!props || !props.onAdd) {
       throw new Error("AXB: onAdd not available");
@@ -141,9 +155,11 @@ const rpc = createBirpc<HostRpcInterface, GuestRpcInterface>(guestRpc, {
   on: (fn) => {
     const handler = (event: MessageEvent) => {
       if (event.origin === window.origin) {
-        console.log(
-          `AXB: guest received message event.data=${JSON.stringify(event.data)}`,
-        );
+        if (event.data.m) {
+          console.log(
+            `AXB: guest received message event.data=${JSON.stringify(event.data)}`,
+          );
+        }
         fn(event.data);
       }
     };
@@ -212,6 +228,9 @@ function determineContext(): BridgeContext {
 
 function poll() {
   const props = findActualProps();
+  if (!props) {
+    console.log(`AXB: THROMER OH NO findActualProps() returned ${props}`);
+  }
   const currentlyConnected = !!props;
 
   const currentState: BridgeState = {

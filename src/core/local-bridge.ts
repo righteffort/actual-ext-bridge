@@ -63,9 +63,11 @@ export class LocalBridge implements ActualBridge {
       on: (fn) => {
         const handler = (event: MessageEvent) => {
           if (event.origin === window.origin) {
-            console.log(
-              `AXB: host received message event.data=${JSON.stringify(event.data)}`,
-            );
+            if (event.data.m) {
+              console.log(
+                `AXB: host received message event.data=${JSON.stringify(event.data)}`,
+              );
+            }
             fn(event.data);
           }
         };
@@ -103,8 +105,8 @@ export class LocalBridge implements ActualBridge {
     return () => this.listeners.delete(callback);
   }
 
-  public state(): BridgeState {
-    return this.internalState;
+  public state(): Promise<BridgeState> {
+    return Promise.resolve(this.internalState);
   }
 
   /**
