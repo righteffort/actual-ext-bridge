@@ -3,6 +3,8 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+import { CONTENT_SCRIPT_RPC_TAG } from "../src/shared/rpc-interface";
+
 // Must match jsdom url in vitest.config.ts
 const TEST_ORIGIN = "https://test.example.com";
 
@@ -34,18 +36,19 @@ describe("Injected Logic", () => {
     vi.clearAllMocks();
   });
 
-  it("should poll and detect when Actual is not ready", async () => {
+  it("should call handshake", async () => {
     await import("../src/content/injected-actual");
 
     // Fast-forward time to trigger poll
     vi.useFakeTimers();
     vi.advanceTimersByTime(2500);
 
-    // Should verify it sent a birpc message with onStateUpdate call
+    // Should verify it sent birpc messages with handshake and onStateUpdate calls
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        m: "onStateUpdate",
-        a: [expect.objectContaining({ connected: false })],
+        m: "handshake",
+	t: "q",
+        axbTarget: CONTENT_SCRIPT_RPC_TAG,
       }),
       expect.anything(),
     );
