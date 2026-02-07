@@ -109,7 +109,7 @@ describe("Injected Logic", () => {
 
     // Setup DOM
     document.body.innerHTML = `<div data-testid="transaction-table"></div>`;
-    const anchor = document.querySelector(".recs-table-row") as HTMLElement &
+    const anchor = document.querySelector('div[data-testid="transaction-table"]') as HTMLElement &
       Record<string, unknown>;
 
     // Note: The logic searches for keys starting with __reactFiber
@@ -145,8 +145,8 @@ describe("Injected Logic", () => {
     };
 
     // Setup DOM
-    document.body.innerHTML = `<div class="recs-table-row"></div>`;
-    const anchor = document.querySelector(".recs-table-row") as HTMLElement &
+    document.body.innerHTML = `<div data-testid="transaction-table"></div>`;
+    const anchor = document.querySelector('div[data-testid="transaction-table"]') as HTMLElement &
       Record<string, unknown>;
     const key = "__reactFiberTest";
     anchor[key] = createFiber(props);
@@ -206,8 +206,8 @@ describe("Injected Logic", () => {
       payees: [],
     };
 
-    document.body.innerHTML = `<div class="recs-table-row"></div>`;
-    const anchor = document.querySelector(".recs-table-row") as HTMLElement &
+    document.body.innerHTML = `<div data-testid="transaction-table"></div>`;
+    const anchor = document.querySelector('div[data-testid="transaction-table"]') as HTMLElement &
       Record<string, unknown>;
     const key = "__reactFiberTest";
     anchor[key] = createFiber(props);
