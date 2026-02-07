@@ -145,6 +145,9 @@ describe("Injected Logic", () => {
     const key = "__reactFiberTest";
     anchor[key] = createFiber(props);
 
+    await import("../src/content/injected-actual");
+    await handleInit(true);
+
     // Simulate birpc call to createTransaction
     const createTransactionPayload = {
       account: "acc-1",
@@ -160,8 +163,9 @@ describe("Injected Logic", () => {
           a: [createTransactionPayload],
           i: "req-1",
           t: "q",
+          axbTarget: INJECTED_RPC_TAG,
         },
-        origin: TEST_ORIGIN,
+        origin: window.origin,
       }),
     );
 
@@ -183,8 +187,8 @@ describe("Injected Logic", () => {
       expect.objectContaining({
         i: "req-1",
         t: "s",
+        axbTarget: CONTENT_SCRIPT_RPC_TAG,
       }),
-      expect.anything(),
     );
   });
 
@@ -221,8 +225,9 @@ describe("Injected Logic", () => {
           ],
           i: "req-dup",
           t: "q",
+          axbTarget: INJECTED_RPC_TAG,
         },
-        origin: TEST_ORIGIN,
+        origin: window.origin,
       }),
     );
 
@@ -236,12 +241,12 @@ describe("Injected Logic", () => {
         i: "req-dup",
         t: "s",
         e: expect.objectContaining({
-          message: "Duplicate transaction detected",
+          message: "AXB: Duplicate transaction detected",
           code: "DUPLICATE",
           importedId: "imp-dup",
         }),
+        axbTarget: CONTENT_SCRIPT_RPC_TAG,
       }),
-      expect.anything(),
     );
   });
 });
