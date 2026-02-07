@@ -52,7 +52,6 @@ describe("Injected Logic", () => {
         axbTarget: CONTENT_SCRIPT_RPC_TAG,
         i: expect.any(String),
       }),
-      expect.anything(),
     );
 
     vi.useRealTimers();
