@@ -47,8 +47,10 @@ describe("Injected Logic", () => {
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         m: "handshake",
-	t: "q",
+        a: [],
+        t: "q",
         axbTarget: CONTENT_SCRIPT_RPC_TAG,
+        i: expect.any(String),
       }),
       expect.anything(),
     );
