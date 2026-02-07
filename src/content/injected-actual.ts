@@ -263,10 +263,11 @@ function poll() {
 }
 
 function init() {
+  console.log("AXB: calling handshake...");
   rpc
     .handshake()
-    .then(() => {
-      console.log("AXB: handshake complete");
+    .then((result) => {
+      console.log("AXB: handshake complete, result:", result);
       poll();
       // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
       window.setInterval(poll, 2000);
