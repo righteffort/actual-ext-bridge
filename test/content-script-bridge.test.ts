@@ -7,7 +7,7 @@ const TEST_ORIGIN = "https://test.example.com";
 
 describe("ContentScriptBridge", () => {
   let bridge: ContentScriptBridge;
-  let scriptCreated = true;
+  const scriptCreated = true;
   let scriptUrl = "";
 
   const setupMockInjection = () => {
@@ -16,7 +16,7 @@ describe("ContentScriptBridge", () => {
     // This is gross (see the globals above!)
     document.createElement = vi.fn().mockImplementation((tagName: string) => {
       if (tagName === "script") {
-        const mockScript = {
+        const mockScript: Partial<HTMLScriptElement> = {
           set src(url: string) {
             scriptUrl = url;
             // Simulate successful script load by triggering handshake
@@ -33,7 +33,7 @@ describe("ContentScriptBridge", () => {
           },
           get src() { return scriptUrl; },
           onload: null as (() => void) | null,
-          onerror: null as ((e: Event) => void) | null,
+          onerror: null as OnErrorEventHandler,
           remove: vi.fn(),
         };
         return mockScript;
@@ -44,6 +44,7 @@ describe("ContentScriptBridge", () => {
     // Mock appendChild to be a no-op for scripts
     const originalAppendChild = document.head.appendChild;
     document.head.appendChild = vi.fn().mockImplementation((node: Node) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((node as any).src) {
         // This is our mock script, don't actually append it
         return node;

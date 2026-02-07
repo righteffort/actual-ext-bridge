@@ -60,7 +60,9 @@ describe("BridgeConnector", () => {
     // Simulate the connector being started and having a listener
     connector.start();
     const listener = onMessageListeners[0];
-    const response = await listener(proxyMsg, {}, () => {});
+    expect(listener).toBeDefined();
+    if (!listener) throw new Error("Listener not found");
+    const response = await listener(proxyMsg, {}, vi.fn());
 
     expect(response).toEqual({
       success: false,
@@ -76,7 +78,7 @@ describe("BridgeConnector", () => {
     };
     
     // Replace the bridge instance
-    (connector as any).csBridge = mockBridge;
+    (connector as unknown as { csBridge: typeof mockBridge }).csBridge = mockBridge;
 
     const proxyMsg = {
       type: ROUTER_MESSAGE_TYPE,
@@ -86,7 +88,9 @@ describe("BridgeConnector", () => {
 
     connector.start();
     const listener = onMessageListeners[0];
-    const response = await listener(proxyMsg, {}, () => {});
+    expect(listener).toBeDefined();
+    if (!listener) throw new Error("Listener not found");
+    const response = await listener(proxyMsg, {}, vi.fn());
 
     expect(response).toEqual({
       success: false,
@@ -99,7 +103,9 @@ describe("BridgeConnector", () => {
 
     connector.start();
     const listener = onMessageListeners[0];
-    const response = await listener(nonRouterMsg, {}, () => {});
+    expect(listener).toBeDefined();
+    if (!listener) throw new Error("Listener not found");
+    const response = await listener(nonRouterMsg, {}, vi.fn());
 
     expect(response).toBeUndefined();
   });
@@ -113,7 +119,9 @@ describe("BridgeConnector", () => {
 
     connector.start();
     const listener = onMessageListeners[0];
-    const response = await listener(proxyMsg, {}, () => {});
+    expect(listener).toBeDefined();
+    if (!listener) throw new Error("Listener not found");
+    const response = await listener(proxyMsg, {}, vi.fn());
 
     expect(response).toEqual({
       success: true,

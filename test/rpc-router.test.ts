@@ -27,15 +27,23 @@ describe("RpcRouter", () => {
     storageSetSpy = vi.fn().mockResolvedValue(undefined);
     
     // Mock the entire storage API structure
-    browser.storage = {
-      session: {
-        get: storageGetSpy,
-        set: storageSetSpy,
+    Object.defineProperty(browser, 'storage', {
+      value: {
+        session: {
+          get: storageGetSpy,
+          set: storageSetSpy,
+        },
       },
-    } as any;
+      writable: true,
+      configurable: true,
+    });
 
     tabSendMessageSpy = vi.fn().mockResolvedValue({});
-    browser.tabs.sendMessage = tabSendMessageSpy;
+    Object.defineProperty(browser.tabs, 'sendMessage', {
+      value: tabSendMessageSpy,
+      writable: true,
+      configurable: true,
+    });
 
     router = new RpcRouter();
     router.start();
@@ -52,7 +60,9 @@ describe("RpcRouter", () => {
     };
 
     const listener = onMessageListeners[0];
-    await listener(msg, { tab: { id: 123 } }, () => {});
+    expect(listener).toBeDefined();
+    if (!listener) throw new Error("Listener not found");
+    await listener(msg, { tab: { id: 123 } }, vi.fn());
 
     expect(storageSetSpy).toHaveBeenCalledWith({ primaryTabId: 123 });
   });
@@ -67,7 +77,9 @@ describe("RpcRouter", () => {
     };
 
     const listener = onMessageListeners[0];
-    await listener(msg, {}, () => {});
+    expect(listener).toBeDefined();
+    if (!listener) throw new Error("Listener not found");
+    await listener(msg, {}, vi.fn());
 
     expect(storageGetSpy).toHaveBeenCalledWith("primaryTabId");
     expect(tabSendMessageSpy).toHaveBeenCalledWith(456, msg);
@@ -83,7 +95,9 @@ describe("RpcRouter", () => {
     };
 
     const listener = onMessageListeners[0];
-    const result = await listener(msg, {}, () => {});
+    expect(listener).toBeDefined();
+    if (!listener) throw new Error("Listener not found");
+    const result = await listener(msg, {}, vi.fn());
 
     expect(result).toEqual({
       success: false,
@@ -102,7 +116,9 @@ describe("RpcRouter", () => {
     };
 
     const listener = onMessageListeners[0];
-    const result = await listener(msg, {}, () => {});
+    expect(listener).toBeDefined();
+    if (!listener) throw new Error("Listener not found");
+    const result = await listener(msg, {}, vi.fn());
 
     expect(result).toEqual({
       success: false,
@@ -114,7 +130,9 @@ describe("RpcRouter", () => {
     const msg = { type: "OTHER_MESSAGE", action: "SOME_ACTION" };
 
     const listener = onMessageListeners[0];
-    const result = await listener(msg, {}, () => {});
+    expect(listener).toBeDefined();
+    if (!listener) throw new Error("Listener not found");
+    const result = await listener(msg, {}, vi.fn());
 
     expect(result).toBeUndefined();
     expect(storageGetSpy).not.toHaveBeenCalled();

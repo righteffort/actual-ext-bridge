@@ -37,11 +37,11 @@ vi.mock("webextension-polyfill", () => ({
 }));
 
 // Mock navigator.locks
-const mockLocks = new Map<string, { callback: Function; resolve: Function }>();
+const mockLocks = new Map<string, { callback: (lock: { name: string }) => void; resolve: () => void }>();
 Object.defineProperty(global.navigator, "locks", {
   value: {
-    request: vi.fn((name: string, callback: Function) => {
-      return new Promise((resolve) => {
+    request: vi.fn((name: string, callback: (lock: { name: string }) => void) => {
+      return new Promise<void>((resolve) => {
         mockLocks.set(name, { callback, resolve });
         // Simulate immediate lock acquisition
         setTimeout(() => {
@@ -56,7 +56,7 @@ Object.defineProperty(global.navigator, "locks", {
 describe("Routing Protocol Integration", () => {
   let router: RpcRouter;
   let connector: BridgeConnector;
-  let messageHandlers: Map<string, Function>;
+  let messageHandlers: Map<string, (message: unknown, sender: unknown, sendResponse: () => void) => void>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -65,8 +65,8 @@ describe("Routing Protocol Integration", () => {
     messageHandlers = new Map();
 
     // Track message handlers
-    (browser.runtime.onMessage.addListener as any).mockImplementation(
-      (handler: Function) => {
+    (browser.runtime.onMessage.addListener as ReturnType<typeof vi.fn>).mockImplementation(
+      (handler: (message: unknown, sender: unknown, sendResponse: () => void) => void) => {
         const id = Math.random().toString();
         messageHandlers.set(id, handler);
       }
@@ -97,12 +97,15 @@ describe("Routing Protocol Integration", () => {
 
     // Simulate the router receiving the CLAIM_PRIMARY message from content script
     const routerHandler = Array.from(messageHandlers.values())[0];
+    expect(routerHandler).toBeDefined();
+    if (!routerHandler) throw new Error();
     await routerHandler(
       {
         type: ROUTER_MESSAGE_TYPE,
         action: RouterMessageType.CLAIM_PRIMARY,
       },
-      { tab: { id: 123 } }
+      { tab: { id: 123 } },
+      vi.fn()
     );
 
     // Mock the content script bridge method
@@ -112,7 +115,7 @@ describe("Routing Protocol Integration", () => {
     );
 
     // Mock tabs.sendMessage to return what the content script would return
-    (browser.tabs.sendMessage as any).mockResolvedValue({
+    (browser.tabs.sendMessage as ReturnType<typeof vi.fn>).mockResolvedValue({
       success: true,
       data: mockAccounts,
     });
@@ -125,8 +128,8 @@ describe("Routing Protocol Integration", () => {
     };
 
     const response = await routerHandler(proxyRequest, {
-      tab: { id: 456 }, // Different tab ID to show it routes to primary (123)
-    });
+      tab: { id: 456 }, // Different tab ID to show it routes to primary (123),
+    }, vi.fn());
 
     // Router should try to send message to primary tab (123, not 456)
     expect(browser.tabs.sendMessage).toHaveBeenCalledWith(123, proxyRequest);
@@ -147,7 +150,9 @@ describe("Routing Protocol Integration", () => {
     };
 
     const routerHandler = Array.from(messageHandlers.values())[0];
-    await routerHandler(claimMessage, { tab: { id: 456 } });
+    expect(routerHandler).toBeDefined();
+    if (!routerHandler) throw new Error("Router handler not found");
+    await routerHandler(claimMessage, { tab: { id: 456 } }, vi.fn());
 
     // Verify primary tab is stored
     expect(browser.storage.session.set).toHaveBeenCalledWith({
@@ -165,7 +170,9 @@ describe("Routing Protocol Integration", () => {
     };
 
     const routerHandler = Array.from(messageHandlers.values())[0];
-    const response = await routerHandler(proxyRequest, { tab: { id: 123 } });
+    expect(routerHandler).toBeDefined();
+    if (!routerHandler) throw new Error("Router handler not found");
+    const response = await routerHandler(proxyRequest, { tab: { id: 123 } }, vi.fn());
 
     expect(response).toEqual({
       success: false,
@@ -195,11 +202,11 @@ describe("Routing Protocol Integration", () => {
 
     // Find content script's message handler
     const contentHandler = Array.from(messageHandlers.values()).find(
-      (handler, index) => index === 1 // Second handler should be content script
+      (_, index) => index === 1 // Second handler should be content script
     );
 
     if (contentHandler) {
-      const response = await contentHandler(proxyRequest, {});
+      const response = await contentHandler(proxyRequest, {}, vi.fn());
       expect(response).toEqual({
         success: false,
         error: "Bridge connection failed",
@@ -216,7 +223,9 @@ describe("Routing Protocol Integration", () => {
     };
 
     const routerHandler = Array.from(messageHandlers.values())[0];
-    const response = await routerHandler(nonRouterMessage, { tab: { id: 123 } });
+    expect(routerHandler).toBeDefined();
+    if (!routerHandler) throw new Error("Router handler not found");
+    const response = await routerHandler(nonRouterMessage, { tab: { id: 123 } }, vi.fn());
 
     expect(response).toBeUndefined();
     expect(browser.tabs.sendMessage).not.toHaveBeenCalled();
