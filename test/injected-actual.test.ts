@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-import { CONTENT_SCRIPT_RPC_TAG } from "../src/shared/rpc-interface";
+import { CONTENT_SCRIPT_RPC_TAG, INJECTED_RPC_TAG } from "../src/shared/rpc-interface";
 
 // Must match jsdom url in vitest.config.ts
 const TEST_ORIGIN = "https://test.example.com";
@@ -39,7 +39,7 @@ describe("Injected Logic", () => {
   it("should call handshake", async () => {
     await import("../src/content/injected-actual");
 
-    // Wait for handshake to be sent
+    // Wait for handshake to be sent. TODO: gross
     await new Promise(resolve => setTimeout(resolve, 10));
 
     // Get the handshake message to extract the request ID
@@ -53,7 +53,7 @@ describe("Injected Logic", () => {
       }),
     );
 
-    const handshakeCall = postMessageSpy.mock.calls[0][0];
+    const handshakeCall = postMessageSpy.mock.calls[0]![0];
     const requestId = handshakeCall.i;
 
     // Simulate handshake response from content script
@@ -63,16 +63,17 @@ describe("Injected Logic", () => {
           i: requestId,
           t: "s", // success response
           r: { success: true }, // response data
-          axbTarget: "INJECTED_ACTUAL",
+          axbTarget: INJECTED_RPC_TAG,
         },
         origin: window.origin,
       }),
     );
 
     // Wait for the onStateUpdate call to happen
+    // TODO: gross!
     await vi.waitFor(() => {
       expect(postMessageSpy).toHaveBeenCalledTimes(2);
-    }, { timeout: 1000 });
+    }, { timeout: 100 });
 
     // Should see handshake first, then onStateUpdate
     expect(postMessageSpy).toHaveBeenNthCalledWith(
