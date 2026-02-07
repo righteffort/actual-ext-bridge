@@ -25,8 +25,14 @@ describe("RpcRouter", () => {
 
     storageGetSpy = vi.fn().mockResolvedValue({});
     storageSetSpy = vi.fn().mockResolvedValue(undefined);
-    browser.storage.session.get = storageGetSpy;
-    browser.storage.session.set = storageSetSpy;
+    
+    // Mock the entire storage API structure
+    browser.storage = {
+      session: {
+        get: storageGetSpy,
+        set: storageSetSpy,
+      },
+    } as any;
 
     tabSendMessageSpy = vi.fn().mockResolvedValue({});
     browser.tabs.sendMessage = tabSendMessageSpy;

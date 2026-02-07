@@ -8,12 +8,12 @@ import browser from "webextension-polyfill";
 
 // Mock the ContentScriptBridge
 vi.mock("../src/content/content-script-bridge.ts", () => ({
-  ContentScriptBridge: vi.fn().mockImplementation(() => ({
-    connect: vi.fn(),
-    getAccounts: vi.fn().mockResolvedValue([{ id: "acc-1" }]),
-    getTransactions: vi.fn().mockResolvedValue([]),
-    nonExistentMethod: undefined,
-  })),
+  ContentScriptBridge: class MockContentScriptBridge {
+    connect = vi.fn();
+    getAccounts = vi.fn().mockResolvedValue([{ id: "acc-1" }]);
+    getTransactions = vi.fn().mockResolvedValue([]);
+    nonExistentMethod = undefined;
+  },
 }));
 
 describe("BridgeConnector", () => {
