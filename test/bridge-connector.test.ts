@@ -1,66 +1,143 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { BridgeConnector } from "../src/content/bridge-connector";
-
 import {
   ROUTER_MESSAGE_TYPE,
   RouterMessageType,
 } from "../src/background/rpc-router";
 import browser from "webextension-polyfill";
 
+// Mock the ContentScriptBridge
+vi.mock("../src/content/content-script-bridge.ts", () => ({
+  ContentScriptBridge: vi.fn().mockImplementation(() => ({
+    connect: vi.fn(),
+    getAccounts: vi.fn().mockResolvedValue([{ id: "acc-1" }]),
+    getTransactions: vi.fn().mockResolvedValue([]),
+    nonExistentMethod: undefined,
+  })),
+}));
+
 describe("BridgeConnector", () => {
   let connector: BridgeConnector;
-  let sendMessageSpy: ReturnType<typeof vi.fn>;
   let onMessageListeners: ((
     message: unknown,
     sender: unknown,
     sendResponse: () => void,
   ) => void)[] = [];
+  let lockRequestSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     onMessageListeners = [];
-    // Mock browser runtime
     browser.runtime.onMessage.addListener = vi.fn((fn) =>
       onMessageListeners.push(fn),
     );
+    browser.runtime.sendMessage = vi.fn().mockResolvedValue({});
 
-    sendMessageSpy = vi.fn().mockResolvedValue({});
-    browser.runtime.sendMessage =
-      sendMessageSpy as typeof browser.runtime.sendMessage;
+    // Mock navigator.locks
+    lockRequestSpy = vi.fn().mockImplementation(async (name, callback) => {
+      // Simulate successful lock acquisition
+      const mockLock = { name };
+      return callback(mockLock);
+    });
+    Object.defineProperty(global.navigator, "locks", {
+      value: { request: lockRequestSpy },
+      writable: true,
+    });
 
     connector = new BridgeConnector();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
-    vi.useRealTimers();
   });
 
-  it("should handle proxy requests when primary", async () => {
-    sendMessageSpy.mockResolvedValue({ tabId: 123 });
-    connector.start();
-
-    // Mock ContentScriptBridge
-    const mockBridge = {
-      getAccounts: vi.fn().mockResolvedValue([{ id: "acc-1" }]),
+  it("should handle invalid method names gracefully", async () => {
+    const proxyMsg = {
+      type: ROUTER_MESSAGE_TYPE,
+      action: RouterMessageType.PROXY_REQUEST,
+      payload: { method: "nonExistentMethod", args: [] },
     };
-    // TODO: unfortunately mockBridge won't get used ...
 
-    // Send Proxy Request
+    // Simulate the connector being started and having a listener
+    connector.start();
+    const listener = onMessageListeners[0];
+    const response = await listener(proxyMsg, {}, () => {});
+
+    expect(response).toEqual({
+      success: false,
+      error: "Method nonExistentMethod not found",
+    });
+  });
+
+  it("should handle method execution errors", async () => {
+    // Mock a method that throws an error
+    const mockBridge = {
+      connect: vi.fn(),
+      throwingMethod: vi.fn().mockRejectedValue(new Error("Test error")),
+    };
+    
+    // Replace the bridge instance
+    (connector as any).csBridge = mockBridge;
+
+    const proxyMsg = {
+      type: ROUTER_MESSAGE_TYPE,
+      action: RouterMessageType.PROXY_REQUEST,
+      payload: { method: "throwingMethod", args: [] },
+    };
+
+    connector.start();
+    const listener = onMessageListeners[0];
+    const response = await listener(proxyMsg, {}, () => {});
+
+    expect(response).toEqual({
+      success: false,
+      error: "Test error",
+    });
+  });
+
+  it("should ignore non-router messages", async () => {
+    const nonRouterMsg = { type: "OTHER_MESSAGE", action: "SOME_ACTION" };
+
+    connector.start();
+    const listener = onMessageListeners[0];
+    const response = await listener(nonRouterMsg, {}, () => {});
+
+    expect(response).toBeUndefined();
+  });
+
+  it("should handle successful method calls", async () => {
     const proxyMsg = {
       type: ROUTER_MESSAGE_TYPE,
       action: RouterMessageType.PROXY_REQUEST,
       payload: { method: "getAccounts", args: [] },
     };
 
-    const proxyListener = onMessageListeners[0];
-    let response;
-    if (proxyListener) {
-      response = await proxyListener(proxyMsg, {}, () => {
-        // Empty sendResponse callback - not used in this test
-      });
-    }
+    connector.start();
+    const listener = onMessageListeners[0];
+    const response = await listener(proxyMsg, {}, () => {});
 
-    expect(mockBridge.getAccounts).toHaveBeenCalled();
-    expect(response).toEqual({ success: true, data: [{ id: "acc-1" }] });
+    expect(response).toEqual({
+      success: true,
+      data: [{ id: "acc-1" }],
+    });
+  });
+
+  it("should attempt to acquire lock on start", async () => {
+    connector.start();
+
+    expect(lockRequestSpy).toHaveBeenCalledWith(
+      expect.stringContaining("-content-script-lock"),
+      expect.any(Function),
+    );
+  });
+
+  it("should handle lock acquisition failure", async () => {
+    lockRequestSpy.mockImplementation(async (name, callback) => {
+      // Simulate lock not being granted
+      return callback(null);
+    });
+
+    await expect(connector.start()).rejects.toThrow(
+      "AXB: lock should never be null",
+    );
   });
 });
