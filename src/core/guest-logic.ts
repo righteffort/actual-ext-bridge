@@ -22,8 +22,12 @@ interface ActualProps {
   transactions?: Transaction[];
   payees?: { id: string; name: string }[];
   accounts?: Account[];
-  onSave?: (tx: unknown) => Promise<void>;
-  onAdd?: (txs: unknown[]) => Promise<void>;
+  onSave?: (
+    tx: Transaction,
+    subTxs?: Transaction[],
+    name?: string,
+  ) => Promise<void>;
+  onAdd?: (txs: Partial<Transaction>[]) => Promise<void>;
   onCreatePayee?: (name: string) => Promise<string>;
 }
 
@@ -91,12 +95,16 @@ const guestRpc = {
     return props.accounts || [];
   },
 
-  async updateTransaction(transaction: Transaction) {
+  async updateTransaction(
+    transaction: Transaction,
+    subtransactions?: Transaction[],
+    field?: string,
+  ) {
     const props = findActualProps();
     if (!props || !props.onSave) {
       throw new Error("AXB: onSave not available");
     }
-    await props.onSave(transaction);
+    await props.onSave(transaction, subtransactions, field);
   },
 
   async createTransaction(payload: ImportTransaction) {
@@ -116,21 +124,35 @@ const guestRpc = {
       error.importedId = payload.imported_id;
       throw error;
     }
+    const {
+      account,
+      date,
+      amount,
+      payee,
+      notes,
+      imported_id,
+      imported_payee,
+      cleared,
+    } = payload;
+    const finalPayee =
+      payee ||
+      (payload.payee_name
+        ? await resolvePayee(props, payload.payee_name)
+        : undefined);
 
-    let payeeId = payload.payee;
-    if (!payeeId && payload.payee_name) {
-      payeeId = await resolvePayee(props, payload.payee_name);
+    // TODO: Validate presence of more required fields
+    if (typeof payload.amount === "undefined") {
+      throw new Error("AXB: (createTransaction): amount missing");
     }
-
-    const newTx: Record<string, unknown> = {
-      account: payload.account,
-      date: payload.date,
-      amount: payload.amount,
-      notes: payload.notes || "",
-      payee: payeeId || null,
-      imported_id: payload.imported_id,
-      imported_payee: payload.imported_payee,
-      cleared: payload.cleared !== undefined ? payload.cleared : false,
+    const newTx: Partial<Transaction> = {
+      account,
+      date,
+      ...(amount !== undefined && { amount }),
+      ...(notes !== undefined && { notes }),
+      ...(finalPayee !== undefined && { payee: finalPayee }),
+      ...(imported_id !== undefined && { imported_id }),
+      ...(imported_payee !== undefined && { imported_payee }),
+      ...(cleared !== undefined && { cleared }),
     };
     if (payload.category) newTx["category"] = payload.category;
 

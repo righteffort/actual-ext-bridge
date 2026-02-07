@@ -72,7 +72,13 @@ export interface ActualBridge {
 
   getAccountByName(name: string): Promise<Account | null>;
 
-  updateTransaction(transaction: Transaction): Promise<void>;
+  // If field is provided, only that field will be updated.
+  updateTransaction(transaction: Transaction, field?: string): Promise<void>;
+
+  splitTransaction(
+    transaction: Transaction,
+    subtransactions: Partial<Transaction>[],
+  ): Promise<void>;
 
   // Note: Doesn't support subtransactions.
   createTransaction(payload: ImportTransaction): Promise<void>;

@@ -144,13 +144,39 @@ export class LocalBridge implements ActualBridge {
     );
   }
 
-  // TODO: support partial update!
-  public async updateTransaction(transaction: Transaction): Promise<void> {
+  public async updateTransaction(
+    transaction: Transaction,
+    field?: string,
+  ): Promise<void> {
     if (!this.rpc) throw new BridgeError("AXB: Not connected");
     if (!transaction.id)
       throw new BridgeError("AXB: Transaction ID required for update.");
+    if (transaction.subtransactions) {
+      throw new BridgeError(
+        "AXB: updateTransaction does not support subtransactions. Try splitTransaction",
+      );
+    }
+    await this.rpc.updateTransaction(transaction, undefined, field);
+  }
 
-    await this.rpc.updateTransaction(transaction);
+  public async splitTransaction(
+    t: Transaction,
+    subtransactions_in: Partial<Transaction>[],
+  ): Promise<void> {
+    if (!this.rpc) throw new BridgeError("AXB: Not connected");
+    const subtransactions = subtransactions_in.map((s) => ({
+      ...s,
+      id: crypto.randomUUID(),
+      is_child: true,
+      parent_id: t.id,
+      account: t.account,
+      date: t.date,
+      amount: s.amount || 0,
+    }));
+    await this.rpc.updateTransaction(
+      { ...t, is_parent: true },
+      subtransactions,
+    );
   }
 
   public async createTransaction(payload: ImportTransaction): Promise<void> {

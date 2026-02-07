@@ -40,8 +40,18 @@ export class RemoteBridge implements ActualBridge {
     return this.proxyCall("getAccountByName", [name]);
   }
 
-  public async updateTransaction(transaction: Transaction): Promise<void> {
-    return this.proxyCall("updateTransaction", [transaction]);
+  public async updateTransaction(
+    transaction: Transaction,
+    field?: string,
+  ): Promise<void> {
+    return this.proxyCall("updateTransaction", [transaction, field]);
+  }
+
+  public async splitTransaction(
+    t: Transaction,
+    subtransactions: Partial<Transaction>[],
+  ): Promise<void> {
+    return this.proxyCall("splitTransaction", [t, subtransactions]);
   }
 
   public async createTransaction(payload: ImportTransaction): Promise<void> {

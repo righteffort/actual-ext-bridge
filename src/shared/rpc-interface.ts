@@ -23,7 +23,11 @@ export interface GuestRpcInterface {
   /**
    * Update an existing transaction
    */
-  updateTransaction(transaction: Transaction): Promise<void>;
+  updateTransaction(
+    transaction: Transaction,
+    subtransactions?: Transaction[],
+    field?: string,
+  ): Promise<void>;
 
   /**
    * Create a new transaction
