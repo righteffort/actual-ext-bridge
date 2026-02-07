@@ -3,8 +3,8 @@ import dts from "vite-plugin-dts";
 import esbuild from "esbuild";
 import path from "path";
 
-const INJECTED_SCRIPT_ENTRY = path.resolve(__dirname, "src/core/guest-logic.ts");
-const INJECTED_OUTPUT_FILENAME = "content/guest-logic.js";
+const INJECTED_SCRIPT_ENTRY = path.resolve(__dirname, "src/content/injected-actual.ts");
+const INJECTED_OUTPUT_FILENAME = "content/injected-actual.js";
 
 /**
  * Build injected script and emit in dist/ for use as web-accessible resource.
@@ -43,7 +43,6 @@ const sidecarScriptPlugin = (): Plugin => {
 
       } catch (e) {
         console.error("Failed to build sidecar script:", e);
-        // We throw to fail the build if this critical file is broken
         throw e;
       }
     }

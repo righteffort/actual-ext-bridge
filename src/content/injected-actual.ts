@@ -1,7 +1,14 @@
+/**
+ * Exposes Actual Budget methods to content script through a birpc interface.
+ *
+ * Runs in the main world, i.e. in the context of the Actual Budget web app.
+ */
 import { createBirpc } from "birpc";
-import type {
-  GuestRpcInterface,
-  HostRpcInterface,
+import {
+  type InjectedActualRpc,
+  type ContentScriptRpc,
+  CONTENT_SCRIPT_RPC_TAG,
+  INJECTED_RPC_TAG,
 } from "../shared/rpc-interface";
 import type {
   Transaction,
@@ -37,7 +44,7 @@ interface ActualProps {
 function findActualProps(): ActualProps | null {
   const anchor = document.querySelector('div[data-testid="transaction-table"]');
   if (!anchor) {
-    // Ideally this just means we're not currently on a transactions page.
+    // With luck this just means we're not currently on a transactions page.
     return null;
   }
 
@@ -77,8 +84,7 @@ function findActualProps(): ActualProps | null {
   return null;
 }
 
-// RPC implementation for the guest side
-const guestRpc = {
+const injectedActualRpc = {
   async getTransactions() {
     const props = findActualProps();
     if (!props) {
@@ -158,30 +164,28 @@ const guestRpc = {
 
     await props.onAdd([newTx]);
   },
-} satisfies GuestRpcInterface; // TODO: I don't understand this
+} satisfies InjectedActualRpc; // TODO: I don't understand why we aren't exactly InjectedActualRpc
 
 // Create birpc instance
-const rpc = createBirpc<HostRpcInterface, GuestRpcInterface>(guestRpc, {
-  post: (data) => {
-    window.postMessage({ ...data, axbTarget: "HOST" });
-  },
-  on: (fn) => {
-    const handler = (event: MessageEvent) => {
-      if (event.origin === window.origin) {
-        console.debug(
-          `AXB: guest received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`, // TODO: remove
-        );
-        if (event?.data?.axbTarget === "GUEST") {
-          fn(event.data);
-        } else {
-          console.debug(`AXB: guest dropped ${JSON.stringify(event.data)}`); // TODO: remove
+const rpc = createBirpc<ContentScriptRpc, InjectedActualRpc>(
+  injectedActualRpc,
+  {
+    post: (data) => {
+      window.postMessage({ ...data, axbTarget: CONTENT_SCRIPT_RPC_TAG });
+    },
+    on: (fn) => {
+      const handler = (event: MessageEvent) => {
+        if (event.origin === window.origin) {
+          if (event?.data?.axbTarget === INJECTED_RPC_TAG) {
+            fn(event.data);
+          }
         }
-      }
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
+      };
+      window.addEventListener("message", handler);
+      return () => window.removeEventListener("message", handler);
+    },
   },
-});
+);
 
 async function resolvePayee(
   props: ActualProps,
@@ -270,7 +274,7 @@ function init() {
       console.error("AXB: handshake failed:", msg);
     });
 
-  console.log("AXB: ActualBridge: guest-logic:init complete.");
+  console.log("AXB: ActualBridge: injected-actual:init complete.");
 }
 
 init();

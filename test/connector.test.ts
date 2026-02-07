@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { BridgeConnector } from "../src/core/bridge-connector";
-// import { LocalBridge } from "../src/core/local-bridge";
+import { BridgeConnector } from "../src/content/bridge-connector";
+
 import {
-  ARBITER_MESSAGE_TYPE,
-  ArbiterMessageType,
-} from "../src/background/arbiter";
+  ROUTER_MESSAGE_TYPE,
+  RouterMessageType,
+} from "../src/background/rpc-router";
 import browser from "webextension-polyfill";
 
 describe("BridgeConnector", () => {
@@ -39,7 +39,7 @@ describe("BridgeConnector", () => {
     sendMessageSpy.mockResolvedValue({ tabId: 123 });
     connector.start();
 
-    // Mock LocalBridge
+    // Mock ContentScriptBridge
     const mockBridge = {
       getAccounts: vi.fn().mockResolvedValue([{ id: "acc-1" }]),
     };
@@ -47,8 +47,8 @@ describe("BridgeConnector", () => {
 
     // Send Proxy Request
     const proxyMsg = {
-      type: ARBITER_MESSAGE_TYPE,
-      action: ArbiterMessageType.PROXY_REQUEST,
+      type: ROUTER_MESSAGE_TYPE,
+      action: RouterMessageType.PROXY_REQUEST,
       payload: { method: "getAccounts", args: [] },
     };
 

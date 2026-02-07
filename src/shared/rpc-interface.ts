@@ -6,10 +6,9 @@ import type {
 } from "../types";
 
 /**
- * RPC interface for communication between LocalBridge (host) and guest-logic (guest).
- * The host calls these methods, and the guest implements them.
+ * RPC interface exposed by InjectedActual to LocalBridge
  */
-export interface GuestRpcInterface {
+export interface InjectedActualRpc {
   /**
    * Get all transactions from the current view
    */
@@ -36,17 +35,22 @@ export interface GuestRpcInterface {
 }
 
 /**
- * RPC interface for communication from guest to host.
- * The guest calls these methods, and the host implements them.
+ * RPC interface exposed by LocalBridge to InjectedActual
  */
-export interface HostRpcInterface {
+export interface ContentScriptRpc {
   /**
-   * Called by guest when state changes (navigation, connection status, etc.)
+   * Called on state changes (navigation, connection status, etc.)
    */
   onStateUpdate(state: BridgeState): Promise<void>;
 
   /**
-   * Called by guest to signal it's ready for communication
+   * Called when InjectedActual is ready
    */
   handshake(): Promise<{ success: boolean }>;
 }
+
+/**
+ * Constants used to tag RPC messages, in order to avoid routing loops.
+ */
+export const CONTENT_SCRIPT_RPC_TAG = "CONTENT_SCRIPT";
+export const INJECTED_RPC_TAG = "INJECTED";

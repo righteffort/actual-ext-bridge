@@ -1,27 +1,27 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { RemoteBridge } from "../src/core/remote-bridge";
+import { BackgroundBridge } from "../src/background/background-bridge";
 import {
-  ARBITER_MESSAGE_TYPE,
-  ArbiterMessageType,
-} from "../src/background/arbiter";
+  ROUTER_MESSAGE_TYPE,
+  RouterMessageType,
+} from "../src/background/rpc-router";
 import browser from "webextension-polyfill";
 
 vi.mock("webextension-polyfill");
 
-describe("RemoteBridge", () => {
-  let bridge: RemoteBridge;
+describe("BackgroundBridge", () => {
+  let bridge: BackgroundBridge;
 
   beforeEach(() => {
-    bridge = new RemoteBridge();
+    bridge = new BackgroundBridge();
   });
 
-  it("should proxy method calls to Arbiter", async () => {
+  it("should proxy method calls to router", async () => {
     await bridge.getAccounts();
 
     expect(browser.runtime.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: ARBITER_MESSAGE_TYPE,
-        action: ArbiterMessageType.PROXY_REQUEST,
+        type: ROUTER_MESSAGE_TYPE,
+        action: RouterMessageType.PROXY_REQUEST,
         payload: expect.objectContaining({
           method: "getAccounts",
           args: [],
@@ -33,10 +33,10 @@ describe("RemoteBridge", () => {
   it("should handle proxy errors", async () => {
     vi.mocked(browser.runtime.sendMessage).mockResolvedValue({
       success: false,
-      error: "Remote Error",
+      error: "Bridge Error",
     });
 
-    await expect(bridge.getTransactions()).rejects.toThrow("Remote Error");
+    await expect(bridge.getTransactions()).rejects.toThrow("Bridge Error");
   });
 
   it("should filter transactions client-side", async () => {

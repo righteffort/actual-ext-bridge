@@ -1,18 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { LocalBridge } from "../src/core/local-bridge";
+import { ContentScriptBridge } from "../src/content/content-script-bridge";
 
 // Mock the guest logic script import
 vi.mock("../src/core/guest-logic.ts?inline-js", () => ({
   default: 'window.postMessage({ type: "ACTUAL_BRIDGE_GUEST_LOADED" }, "*")',
 }));
 
-describe("LocalBridge", () => {
-  let bridge: LocalBridge;
+describe("ContentScriptBridge", () => {
+  let bridge: ContentScriptBridge;
   const baseUrl = "https://actual.test";
 
   beforeEach(() => {
     document.head.innerHTML = "";
-    bridge = new LocalBridge();
+    bridge = new ContentScriptBridge();
 
     // Mock window.postMessage to intercept bridge messages
     const mockPostMessage = vi.fn((message: unknown, targetOrigin: string) => {

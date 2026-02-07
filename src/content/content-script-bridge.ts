@@ -1,3 +1,7 @@
+/**
+ * Implementation of ActualBridge interface that runs in the content script.
+ */
+
 import browser from "webextension-polyfill";
 import { createBirpc } from "birpc";
 import {
@@ -6,9 +10,11 @@ import {
   BridgeDuplicateError,
   BridgeError,
 } from "../errors";
-import type {
-  GuestRpcInterface,
-  HostRpcInterface,
+import {
+  type InjectedActualRpc,
+  type ContentScriptRpc,
+  CONTENT_SCRIPT_RPC_TAG,
+  INJECTED_RPC_TAG,
 } from "../shared/rpc-interface";
 import type {
   BridgeState,
@@ -18,32 +24,31 @@ import type {
   ActualBridge,
 } from "../types";
 
-export class LocalBridge implements ActualBridge {
+export class ContentScriptBridge implements ActualBridge {
   private internalState: BridgeState = {
     connected: false,
     context: { type: "UNKNOWN", accountId: null },
   };
   private listeners = new Set<(state: BridgeState) => void>();
   private rpc: ReturnType<
-    typeof createBirpc<GuestRpcInterface, HostRpcInterface>
+    typeof createBirpc<InjectedActualRpc, ContentScriptRpc>
   > | null = null;
 
   public async connect(): Promise<void> {
-    // Wait for guest to signal it's ready
+    // Wait for injected-actual to signal it's ready
     let handshakeResolve: () => void;
     const handshakePromise = new Promise<void>((resolve, reject) => {
       handshakeResolve = resolve;
       setTimeout(() => {
         reject(
           new BridgeConnectionError(
-            "Guest script failed to initialize within timeout",
+            "injected-actual failed to initialize within timeout",
           ),
         );
       }, 5000);
     });
 
-    // Create RPC instance
-    const hostRpc: HostRpcInterface = {
+    const contentScriptRpc: ContentScriptRpc = {
       onStateUpdate: async (state: BridgeState) => {
         this.internalState = state;
         this.notifyListeners();
@@ -54,33 +59,30 @@ export class LocalBridge implements ActualBridge {
       },
     };
 
-    this.rpc = createBirpc<GuestRpcInterface, HostRpcInterface>(hostRpc, {
-      post: (data) => {
-        console.debug(`AXB: host window.postMessage(${JSON.stringify(data)})`);
-        window.postMessage({ ...data, axbTarget: "GUEST" });
-      },
-      on: (fn) => {
-        const handler = (event: MessageEvent) => {
-          console.debug(
-            `AXB: host received message event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`, // TODO: remove
-          );
-          if (event.origin === window.origin) {
-            if (event?.data?.axbTarget === "HOST") {
-              fn(event.data);
-            } else {
-              console.debug(`AXB: host dropped ${JSON.stringify(event.data)}`); // TODO: remove
+    this.rpc = createBirpc<InjectedActualRpc, ContentScriptRpc>(
+      contentScriptRpc,
+      {
+        post: (data) => {
+          window.postMessage({ ...data, axbTarget: INJECTED_RPC_TAG });
+        },
+        on: (fn) => {
+          const handler = (event: MessageEvent) => {
+            if (event.origin === window.origin) {
+              if (event?.data?.axbTarget === CONTENT_SCRIPT_RPC_TAG) {
+                fn(event.data);
+              }
             }
-          }
-        };
-        window.addEventListener("message", handler);
-        return () => window.removeEventListener("message", handler);
+          };
+          window.addEventListener("message", handler);
+          return () => window.removeEventListener("message", handler);
+        },
       },
-    });
+    );
 
     // Inject the main world script
     // TODO: make parameterizable and plumb through from BridgeConnector.start
-    const scriptUrl = browser.runtime.getURL("src/content/guest-logic.js");
-    console.log(`AXB: injecting script from ${scriptUrl}`);
+    const scriptUrl = browser.runtime.getURL("src/content/injected-actual.js");
+    console.debug(`AXB: injecting script from ${scriptUrl}`);
     const script = document.createElement("script");
     script.src = scriptUrl;
     script.onload = function () {
@@ -88,7 +90,6 @@ export class LocalBridge implements ActualBridge {
     };
     (document.head || document.documentElement).appendChild(script);
 
-    // Wait for handshake
     try {
       await handshakePromise;
     } catch (e) {
@@ -115,12 +116,8 @@ export class LocalBridge implements ActualBridge {
   public async getTransactions(
     predicate?: (t: Transaction) => boolean,
   ): Promise<Transaction[]> {
-    console.log("AXB: (host) getTransactions");
     if (!this.rpc) throw new BridgeError("AXB: Not connected");
-
-    console.log(`AXB: this.rpc keys ${JSON.stringify(Object.keys(this.rpc))}`);
     const all = await this.rpc.getTransactions();
-    console.log("AXB: (host) guest.getTransactions returned"); // not reached!
     if (predicate) {
       return all.filter(predicate);
     }
@@ -129,12 +126,11 @@ export class LocalBridge implements ActualBridge {
 
   public async getAccounts(): Promise<Account[]> {
     if (!this.rpc) throw new BridgeError("AXB: Not connected");
-
     return await this.rpc.getAccounts();
   }
 
   /**
-   * Helper: Fetches all accounts and finds one by name (case-insensitive).
+   * Fetches all accounts and finds one by name (case-insensitive).
    */
   public async getAccountByName(name: string): Promise<Account | null> {
     const accounts = await this.getAccounts();
@@ -186,13 +182,15 @@ export class LocalBridge implements ActualBridge {
         "AXB: Account ID is mandatory for creation.",
       );
     }
-    // Context check logic preserved
+    // TODO: we could be a little more permissive, e.g. if we're on
+    // ALL_ACCOUNTS and the date range in the current view covers the
+    // imported transactions.
     if (
-      this.internalState.context.type === "SINGLE_ACCOUNT" &&
+      this.internalState.context.type !== "SINGLE_ACCOUNT" ||
       this.internalState.context.accountId !== payload.account
     ) {
       throw new BridgeContextError(
-        `AXB: Current view (${this.internalState.context.accountId}) matches not target (${payload.account}).`,
+        `AXB: Current view (${this.internalState.context.accountId}) does not match target (${payload.account}).`,
       );
     }
 
@@ -215,9 +213,6 @@ export class LocalBridge implements ActualBridge {
   }
 
   private notifyListeners() {
-    console.debug(
-      `AXB: local-bridge notifying ${this.listeners.size} listeners`,
-    );
     this.listeners.forEach((l) => l(this.internalState));
   }
 }

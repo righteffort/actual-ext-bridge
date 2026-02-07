@@ -18,7 +18,7 @@ function createFiber(
   };
 }
 
-describe("Guest Logic", () => {
+describe("Injected Logic", () => {
   let postMessageSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
@@ -35,7 +35,7 @@ describe("Guest Logic", () => {
   });
 
   it("should poll and detect when Actual is not ready", async () => {
-    await import("../src/core/guest-logic");
+    await import("../src/content/injected-actual");
 
     // Fast-forward time to trigger poll
     vi.useFakeTimers();
@@ -71,7 +71,7 @@ describe("Guest Logic", () => {
     const key = "__reactFiber" + Math.random().toString(36).slice(2);
     anchor[key] = child;
 
-    await import("../src/core/guest-logic");
+    await import("../src/content/injected-actual");
 
     vi.useFakeTimers();
     vi.advanceTimersByTime(2500);
@@ -168,7 +168,7 @@ describe("Guest Logic", () => {
     const key = "__reactFiberTest";
     anchor[key] = createFiber(props);
 
-    await import("../src/core/guest-logic");
+    await import("../src/content/injected-actual");
 
     // Send birpc message to createTransaction with duplicate
     window.dispatchEvent(

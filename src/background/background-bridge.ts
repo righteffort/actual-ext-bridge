@@ -1,9 +1,9 @@
 import browser from "webextension-polyfill";
 import {
-  ARBITER_MESSAGE_TYPE,
-  ArbiterMessageType,
-  type ArbiterMessage,
-} from "../background/arbiter";
+  ROUTER_MESSAGE_TYPE,
+  RouterMessageType,
+  type RouterMessage,
+} from "../background/rpc-router";
 import type {
   BridgeState,
   ImportTransaction,
@@ -12,15 +12,10 @@ import type {
   ActualBridge,
 } from "../types";
 
-export class RemoteBridge implements ActualBridge {
+export class BackgroundBridge implements ActualBridge {
   constructor(tabId?: number) {
     void tabId;
   }
-
-  // TODO: i don't think this makes much sense.
-  // public async connect(): Promise<void> {
-  //   return this.proxyCall("connect", []);
-  // }
 
   public async getTransactions(
     predicate?: (t: Transaction) => boolean,
@@ -64,7 +59,7 @@ export class RemoteBridge implements ActualBridge {
       try {
         const s = await this.proxyCall<BridgeState>("state", []);
         console.debug(
-          `remote subscribe received ${JSON.stringify(s)} from local.state`,
+          `background subscribe received ${JSON.stringify(s)} from content script state`,
         );
         callback(s);
       } catch {
@@ -83,14 +78,10 @@ export class RemoteBridge implements ActualBridge {
     return this.proxyCall("state", []);
   }
 
-  // public disconnect(): void {
-  //   // No-op remotely
-  // }
-
   private async proxyCall<T>(method: string, args: unknown[]): Promise<T> {
-    const msg: ArbiterMessage = {
-      type: ARBITER_MESSAGE_TYPE,
-      action: ArbiterMessageType.PROXY_REQUEST,
+    const msg: RouterMessage = {
+      type: ROUTER_MESSAGE_TYPE,
+      action: RouterMessageType.PROXY_REQUEST,
       payload: { method, args },
     };
 
@@ -100,7 +91,7 @@ export class RemoteBridge implements ActualBridge {
       error?: string;
     };
 
-    if (!response) throw new Error("AXB: No response from Arbiter");
+    if (!response) throw new Error("AXB: No response from router");
 
     if (response.success) {
       return response.data as T;

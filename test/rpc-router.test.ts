@@ -2,14 +2,14 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
-  BridgeArbiter,
-  ArbiterMessageType,
-  ARBITER_MESSAGE_TYPE,
-} from "../src/background/arbiter";
+  RpcRouter,
+  RouterMessageType,
+  ROUTER_MESSAGE_TYPE,
+} from "../src/background/rpc-router";
 import browser from "webextension-polyfill";
 
-describe("BridgeArbiter", () => {
-  let arbiter: BridgeArbiter;
+describe("RpcRouter", () => {
+  let router: RpcRouter;
   let onMessageListeners: ((
     message: unknown,
     sender: unknown,
@@ -28,8 +28,8 @@ describe("BridgeArbiter", () => {
       tabSendMessageSpy as typeof browser.tabs.sendMessage;
     browser.tabs.query = vi.fn().mockResolvedValue([{ id: 1 }, { id: 2 }]);
 
-    arbiter = new BridgeArbiter();
-    arbiter.start();
+    router = new RpcRouter();
+    router.start();
   });
 
   afterEach(() => {
@@ -38,11 +38,11 @@ describe("BridgeArbiter", () => {
   });
 
   it("should route proxy requests to primary", async () => {
-    arbiter.setPrimary(100);
+    // router.setPrimary(100);  TODO: we need a proper way to set this
 
     const msg = {
-      type: ARBITER_MESSAGE_TYPE,
-      action: ArbiterMessageType.PROXY_REQUEST,
+      type: ROUTER_MESSAGE_TYPE,
+      action: RouterMessageType.PROXY_REQUEST,
       payload: { method: "foo" },
     };
 

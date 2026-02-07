@@ -1,23 +1,10 @@
-/**
- * Public API Entry Point for @righteffort/actual-ext-lib
- */
+// Content Script components
+export { ContentScriptBridge } from "./content/content-script-bridge";
+export { BridgeConnector } from "./content/bridge-connector";
 
-// Core Logic (Content Script)
-export { LocalBridge } from "./core/local-bridge";
-export { BridgeConnector } from "./core/bridge-connector";
+// Background / Service Worker components
+export { BackgroundBridge } from "./background/background-bridge";
+export { RpcRouter } from "./background/rpc-router";
 
-// Core Logic (Background/UI)
-export { RemoteBridge } from "./core/remote-bridge";
-export { BridgeArbiter } from "./background/arbiter";
-
-// Types & Errors
 export * from "./types";
 export * from "./errors";
-
-// Constants (Useful for message passing if needed manually)
-export {
-  GuestMessageType,
-  HostMessageType,
-  SOURCE_GUEST,
-  SOURCE_HOST,
-} from "./shared/constants";

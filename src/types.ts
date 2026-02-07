@@ -61,7 +61,7 @@ export interface BridgeState {
 }
 
 /**
- * Shared interface for both Local (Content Script) and Remote (Background/UI) bridges.
+ * Shared interface for both ContentScriptBridge and BackgroundBridge.
  */
 export interface ActualBridge {
   getTransactions(
