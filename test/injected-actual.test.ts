@@ -43,7 +43,9 @@ describe("Injected Logic", () => {
     vi.useFakeTimers();
     vi.advanceTimersByTime(2500);
 
-    expect(postMessageSpy).toHaveBeenCalledWith(
+    // Should see handshake first, then onStateUpdate
+    expect(postMessageSpy).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         m: "handshake",
         a: [],
@@ -52,10 +54,14 @@ describe("Injected Logic", () => {
         i: expect.any(String),
       }),
     );
-    expect(postMessageSpy).toHaveBeenCalledWith(
+    expect(postMessageSpy).toHaveBeenNthCalledWith(
+      2,
       expect.objectContaining({
         m: "onStateUpdate",
         a: [expect.objectContaining({ connected: true })],
+        axbTarget: CONTENT_SCRIPT_RPC_TAG,
+        i: expect.any(String),
+        t: "q",
       }),
     );
 
