@@ -36,9 +36,8 @@ describe("Injected Logic", () => {
     vi.clearAllMocks();
   });
 
-  it("should call handshake", async () => {
-    await import("../src/content/injected-actual");
-
+  const handleInit = async function(connected: boolean) {
+    // caller should have imported already (?)
     // Wait for handshake to be sent. TODO: gross
     await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -90,12 +89,17 @@ describe("Injected Logic", () => {
       2,
       expect.objectContaining({
         m: "onStateUpdate",
-        a: [expect.objectContaining({ connected: false })], // false because no DOM setup
+        a: [expect.objectContaining({ connected })],
         axbTarget: CONTENT_SCRIPT_RPC_TAG,
         i: expect.any(String),
         t: "q",
       }),
     );
+  };
+
+  it("should call handshake", async () => {
+    await import("../src/content/injected-actual");
+    await handleInit(false); // false because no DOM setup);
   });
 
   it("should traverse Fiber tree to find transaction props", async () => {
@@ -117,47 +121,7 @@ describe("Injected Logic", () => {
     anchor[key] = child;
 
     await import("../src/content/injected-actual");
-
-    // Wait for handshake to be sent
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    // Get the handshake message to extract the request ID
-    expect(postMessageSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        m: "handshake",
-        a: [],
-        t: "q",
-        axbTarget: CONTENT_SCRIPT_RPC_TAG,
-        i: expect.any(String),
-      }),
-    );
-
-    const handshakeCall = postMessageSpy.mock.calls[0]![0];
-    const requestId = handshakeCall.i;
-
-    // Simulate handshake response from content script
-    window.dispatchEvent(
-      new MessageEvent("message", {
-        data: {
-          i: requestId,
-          t: "s", // success response
-          r: { success: true }, // response data
-          axbTarget: INJECTED_RPC_TAG,
-        },
-        origin: window.origin,
-      }),
-    );
-
-    vi.useFakeTimers();
-    vi.advanceTimersByTime(2500);
-
-    expect(postMessageSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        m: "onStateUpdate",
-        a: [expect.objectContaining({ connected: true })],
-      }),
-    );
-    vi.useRealTimers();
+    await handleInit(true);
   });
 
   it("should handle CREATE_TRANSACTION and resolve payees", async () => {
@@ -189,8 +153,6 @@ describe("Injected Logic", () => {
       payee_name: "New Store",
       imported_id: "imp-1",
     };
-
-    // Send birpc message to createTransaction
     window.dispatchEvent(
       new MessageEvent("message", {
         data: {
@@ -243,6 +205,7 @@ describe("Injected Logic", () => {
     anchor[key] = createFiber(props);
 
     await import("../src/content/injected-actual");
+    await handleInit(true);
 
     // Send birpc message to createTransaction with duplicate
     window.dispatchEvent(
