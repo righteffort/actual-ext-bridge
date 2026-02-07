@@ -43,7 +43,6 @@ describe("Injected Logic", () => {
     vi.useFakeTimers();
     vi.advanceTimersByTime(2500);
 
-    // Should verify it sent birpc messages with handshake and onStateUpdate calls
     expect(postMessageSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         m: "handshake",
@@ -51,6 +50,12 @@ describe("Injected Logic", () => {
         t: "q",
         axbTarget: CONTENT_SCRIPT_RPC_TAG,
         i: expect.any(String),
+      }),
+    );
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        m: "onStateUpdate",
+        a: [expect.objectContaining({ connected: true })],
       }),
     );
 
@@ -67,7 +72,7 @@ describe("Injected Logic", () => {
     const child = createFiber({ className: "row" }, parent);
 
     // Setup DOM
-    document.body.innerHTML = `<div class="recs-table-row"></div>`;
+    document.body.innerHTML = `<div data-testid="transaction-table"></div>`;
     const anchor = document.querySelector(".recs-table-row") as HTMLElement &
       Record<string, unknown>;
 
@@ -85,7 +90,6 @@ describe("Injected Logic", () => {
         m: "onStateUpdate",
         a: [expect.objectContaining({ connected: true })],
       }),
-      expect.anything(),
     );
     vi.useRealTimers();
   });
