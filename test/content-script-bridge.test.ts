@@ -22,16 +22,21 @@ describe("ContentScriptBridge", () => {
             // Simulate successful script load by triggering handshake
             setTimeout(() => {
               // Simulate the injected script calling rpc.handshake()
-              window.postMessage({
-                m: "handshake",
-                a: [],
-                i: "mock-handshake-id",
-                t: "q",
-                axbTarget: CONTENT_SCRIPT_RPC_TAG,
-              }, window.origin);
+              window.postMessage(
+                {
+                  m: "handshake",
+                  a: [],
+                  i: "mock-handshake-id",
+                  t: "q",
+                  axbTarget: CONTENT_SCRIPT_RPC_TAG,
+                },
+                window.origin,
+              );
             }, 10);
           },
-          get src() { return scriptUrl; },
+          get src() {
+            return scriptUrl;
+          },
           onload: null as (() => void) | null,
           onerror: null as OnErrorEventHandler,
           remove: vi.fn(),
@@ -387,7 +392,9 @@ describe("ContentScriptBridge", () => {
 
     await expect(
       bridge.createTransaction(transactionWithDifferentAccount),
-    ).rejects.toThrow("AXB: Current view (acc-1) does not match target (acc-2)");
+    ).rejects.toThrow(
+      "AXB: Current view (acc-1) does not match target (acc-2)",
+    );
   });
 
   it("should handle duplicate transaction error", async () => {
@@ -446,5 +453,4 @@ describe("ContentScriptBridge", () => {
       bridge.createTransaction(duplicateTransaction),
     ).rejects.toThrow("Duplicate transaction detected.");
   });
-
 });

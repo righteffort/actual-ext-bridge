@@ -76,9 +76,10 @@ describe("BridgeConnector", () => {
       connect: vi.fn(),
       throwingMethod: vi.fn().mockRejectedValue(new Error("Test error")),
     };
-    
+
     // Replace the bridge instance
-    (connector as unknown as { csBridge: typeof mockBridge }).csBridge = mockBridge;
+    (connector as unknown as { csBridge: typeof mockBridge }).csBridge =
+      mockBridge;
 
     const proxyMsg = {
       type: ROUTER_MESSAGE_TYPE,
