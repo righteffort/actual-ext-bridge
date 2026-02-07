@@ -69,8 +69,10 @@ describe("Injected Logic", () => {
       }),
     );
 
-    // Wait for response to be processed and poll to be called
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // Wait for the onStateUpdate call to happen
+    await vi.waitFor(() => {
+      expect(postMessageSpy).toHaveBeenCalledTimes(2);
+    }, { timeout: 1000 });
 
     // Should see handshake first, then onStateUpdate
     expect(postMessageSpy).toHaveBeenNthCalledWith(
