@@ -118,6 +118,36 @@ describe("Injected Logic", () => {
 
     await import("../src/content/injected-actual");
 
+    // Wait for handshake to be sent
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Get the handshake message to extract the request ID
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        m: "handshake",
+        a: [],
+        t: "q",
+        axbTarget: CONTENT_SCRIPT_RPC_TAG,
+        i: expect.any(String),
+      }),
+    );
+
+    const handshakeCall = postMessageSpy.mock.calls[0]![0];
+    const requestId = handshakeCall.i;
+
+    // Simulate handshake response from content script
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: {
+          i: requestId,
+          t: "s", // success response
+          r: { success: true }, // response data
+          axbTarget: INJECTED_RPC_TAG,
+        },
+        origin: window.origin,
+      }),
+    );
+
     vi.useFakeTimers();
     vi.advanceTimersByTime(2500);
 
