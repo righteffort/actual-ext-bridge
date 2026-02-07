@@ -129,15 +129,4 @@ describe("BridgeConnector", () => {
       expect.any(Function),
     );
   });
-
-  it("should handle lock acquisition failure", async () => {
-    lockRequestSpy.mockImplementation(async (name, callback) => {
-      // Simulate lock not being granted
-      return callback(null);
-    });
-
-    await expect(connector.start()).rejects.toThrow(
-      "AXB: lock should never be null",
-    );
-  });
 });

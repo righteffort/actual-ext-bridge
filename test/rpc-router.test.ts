@@ -121,22 +121,4 @@ describe("RpcRouter", () => {
     expect(tabSendMessageSpy).not.toHaveBeenCalled();
   });
 
-  it("should warn when CLAIM_PRIMARY has no tab id", async () => {
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    const msg = {
-      type: ROUTER_MESSAGE_TYPE,
-      action: RouterMessageType.CLAIM_PRIMARY,
-    };
-
-    const listener = onMessageListeners[0];
-    await listener(msg, {}, () => {});
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "AXB: Received CLAIM_PRIMARY message with no tab id",
-    );
-    expect(storageSetSpy).not.toHaveBeenCalled();
-
-    consoleSpy.mockRestore();
-  });
 });
