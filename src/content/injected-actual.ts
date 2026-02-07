@@ -171,10 +171,12 @@ const rpc = createBirpc<ContentScriptRpc, InjectedActualRpc>(
   injectedActualRpc,
   {
     post: (data) => {
+      console.log(`injected sending ${JSON.stringify({ ...data, axbTarget: CONTENT_SCRIPT_RPC_TAG })}`);
       window.postMessage({ ...data, axbTarget: CONTENT_SCRIPT_RPC_TAG });
     },
     on: (fn) => {
       const handler = (event: MessageEvent) => {
+	console.log(`injected received event=${JSON.stringify(event)} event.data=${JSON.stringify(event.data)}`);
         if (event.origin === window.origin) {
           if (event?.data?.axbTarget === INJECTED_RPC_TAG) {
             fn(event.data);
