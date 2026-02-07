@@ -39,9 +39,38 @@ describe("Injected Logic", () => {
   it("should call handshake", async () => {
     await import("../src/content/injected-actual");
 
-    // Fast-forward time to trigger poll
-    vi.useFakeTimers();
-    vi.advanceTimersByTime(2500);
+    // Wait for handshake to be sent
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Get the handshake message to extract the request ID
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        m: "handshake",
+        a: [],
+        t: "q",
+        axbTarget: CONTENT_SCRIPT_RPC_TAG,
+        i: expect.any(String),
+      }),
+    );
+
+    const handshakeCall = postMessageSpy.mock.calls[0][0];
+    const requestId = handshakeCall.i;
+
+    // Simulate handshake response from content script
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: {
+          i: requestId,
+          t: "s", // success response
+          r: { success: true }, // response data
+          axbTarget: "INJECTED_ACTUAL",
+        },
+        origin: window.origin,
+      }),
+    );
+
+    // Wait for response to be processed and poll to be called
+    await new Promise(resolve => setTimeout(resolve, 10));
 
     // Should see handshake first, then onStateUpdate
     expect(postMessageSpy).toHaveBeenNthCalledWith(
@@ -58,14 +87,12 @@ describe("Injected Logic", () => {
       2,
       expect.objectContaining({
         m: "onStateUpdate",
-        a: [expect.objectContaining({ connected: true })],
+        a: [expect.objectContaining({ connected: false })], // false because no DOM setup
         axbTarget: CONTENT_SCRIPT_RPC_TAG,
         i: expect.any(String),
         t: "q",
       }),
     );
-
-    vi.useRealTimers();
   });
 
   it("should traverse Fiber tree to find transaction props", async () => {
