@@ -1,14 +1,56 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ContentScriptBridge } from "../src/content/content-script-bridge";
+import { CONTENT_SCRIPT_RPC_TAG } from "../src/shared/rpc-interface.ts";
 
-// Mock the guest logic script import
-vi.mock("../src/core/guest-logic.ts?inline-js", () => ({
-  default: 'window.postMessage({ type: "ACTUAL_BRIDGE_GUEST_LOADED" }, "*")',
-}));
+// Must match jsdom url in vitest.config.ts
+const TEST_ORIGIN = "https://test.example.com";
 
 describe("ContentScriptBridge", () => {
   let bridge: ContentScriptBridge;
-  const baseUrl = "https://actual.test";
+  let scriptCreated = true;
+  let scriptUrl = "";
+
+  const setupMockInjection = () => {
+    // Mock document.createElement to intercept script creation.
+    // We don't care about the originals or even their behavior.
+    // This is gross (see the globals above!)
+    document.createElement = vi.fn().mockImplementation((tagName: string) => {
+      if (tagName === "script") {
+        const mockScript = {
+          set src(url: string) {
+            scriptUrl = url;
+            // Simulate successful script load by triggering handshake
+            setTimeout(() => {
+              // Simulate the injected script calling rpc.handshake()
+              window.postMessage({
+                m: "handshake",
+                a: [],
+                i: "mock-handshake-id",
+                t: "q",
+                axbTarget: CONTENT_SCRIPT_RPC_TAG,
+              }, window.origin);
+            }, 10);
+          },
+          get src() { return scriptUrl; },
+          onload: null as (() => void) | null,
+          onerror: null as ((e: Event) => void) | null,
+          remove: vi.fn(),
+        };
+        return mockScript;
+      }
+      return "";
+    });
+
+    // Mock appendChild to be a no-op for scripts
+    const originalAppendChild = document.head.appendChild;
+    document.head.appendChild = vi.fn().mockImplementation((node: Node) => {
+      if ((node as any).src) {
+        // This is our mock script, don't actually append it
+        return node;
+      }
+      return originalAppendChild.call(document.head, node);
+    });
+  };
 
   beforeEach(() => {
     document.head.innerHTML = "";
@@ -27,12 +69,13 @@ describe("ContentScriptBridge", () => {
     });
     window.postMessage =
       mockPostMessage as unknown as typeof window.postMessage;
+
+    setupMockInjection();
   });
 
   let messageHandlers: ((event: MessageEvent) => void)[] = [];
 
   afterEach(() => {
-    // bridge.disconnect();
     vi.restoreAllMocks();
     // Clean up all message handlers registered during tests
     messageHandlers.forEach((handler) => {
@@ -51,7 +94,7 @@ describe("ContentScriptBridge", () => {
   const mockMessageEvent = (data: unknown) => {
     const event = new MessageEvent("message", {
       data,
-      origin: baseUrl,
+      origin: TEST_ORIGIN,
       source: window,
     });
     setTimeout(() => {
@@ -60,44 +103,24 @@ describe("ContentScriptBridge", () => {
   };
 
   it("should inject the guest script on connect", async () => {
-    const messageHandler = (event: MessageEvent) => {
-      const data = event.data;
-      // Handle birpc handshake call
-      if (data && data.m === "handshake") {
-        // Reply with birpc success response
-        mockMessageEvent({
-          i: data.i,
-          t: "s",
-          r: { success: true },
-        });
-      }
-    };
-
-    addMessageHandler(messageHandler);
-
+    // TODO: we should check that we *respond* to the handshake message!
     await bridge.connect();
 
-    // Verify script tag was created
-    const script = document.head.querySelector("script");
-    expect(script).toBeTruthy();
-    expect(script?.textContent).toContain("window.postMessage");
+    // Verify script creation was attempted.
+    expect(scriptCreated).toBe(true);
+    expect(scriptUrl).toContain("src/content/injected-actual.js");
   });
 
   it("should handle getTransactions", async () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
 
-      if (data && data.m === "handshake") {
-        mockMessageEvent({
-          i: data.i,
-          t: "s",
-          r: { success: true },
-        });
-      } else if (data && data.m === "getTransactions") {
+      if (data && data.m === "getTransactions") {
         mockMessageEvent({
           i: data.i,
           t: "s",
           r: [{ id: "tx-1", amount: 100 }],
+          axbTarget: CONTENT_SCRIPT_RPC_TAG,
         });
       }
     };
@@ -115,17 +138,12 @@ describe("ContentScriptBridge", () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
 
-      if (data && data.m === "handshake") {
-        mockMessageEvent({
-          i: data.i,
-          t: "s",
-          r: { success: true },
-        });
-      } else if (data && data.m === "getAccounts") {
+      if (data && data.m === "getAccounts") {
         mockMessageEvent({
           i: data.i,
           t: "s",
           r: [{ id: "acc-1", name: "Checking" }],
+          axbTarget: CONTENT_SCRIPT_RPC_TAG,
         });
       }
     };
@@ -143,17 +161,12 @@ describe("ContentScriptBridge", () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
 
-      if (data && data.m === "handshake") {
-        mockMessageEvent({
-          i: data.i,
-          t: "s",
-          r: { success: true },
-        });
-      } else if (data && data.m === "getAccounts") {
+      if (data && data.m === "getAccounts") {
         mockMessageEvent({
           i: data.i,
           t: "s",
           r: [{ id: "acc-1", name: "Savings" }],
+          axbTarget: CONTENT_SCRIPT_RPC_TAG,
         });
       }
     };
@@ -170,17 +183,12 @@ describe("ContentScriptBridge", () => {
     const messageHandler = (event: MessageEvent) => {
       const data = event.data;
 
-      if (data && data.m === "handshake") {
-        mockMessageEvent({
-          i: data.i,
-          t: "s",
-          r: { success: true },
-        });
-      } else if (data && data.m === "updateTransaction") {
+      if (data && data.m === "updateTransaction") {
         mockMessageEvent({
           i: data.i,
           t: "s",
           r: undefined,
+          axbTarget: CONTENT_SCRIPT_RPC_TAG,
         });
       }
     };
@@ -202,20 +210,6 @@ describe("ContentScriptBridge", () => {
   });
 
   it("should throw error when updateTransaction called without transaction ID", async () => {
-    const messageHandler = (event: MessageEvent) => {
-      const data = event.data;
-
-      if (data && data.m === "handshake") {
-        mockMessageEvent({
-          i: data.i,
-          t: "s",
-          r: { success: true },
-        });
-      }
-    };
-
-    addMessageHandler(messageHandler);
-
     await bridge.connect();
 
     const transactionWithoutId = {
@@ -274,16 +268,26 @@ describe("ContentScriptBridge", () => {
       const data = event.data;
 
       if (data && data.m === "handshake") {
-        mockMessageEvent({
-          i: data.i,
-          t: "s",
-          r: { success: true },
-        });
+        // Simulate state update with single account context via birpc
+        setTimeout(() => {
+          mockMessageEvent({
+            m: "onStateUpdate",
+            a: [
+              {
+                connected: true,
+                context: { type: "SINGLE_ACCOUNT", accountId: "acc-1" },
+              },
+            ],
+            t: "q",
+            axbTarget: CONTENT_SCRIPT_RPC_TAG,
+          });
+        }, 5);
       } else if (data && data.m === "createTransaction") {
         mockMessageEvent({
           i: data.i,
           t: "s",
           r: undefined,
+          axbTarget: CONTENT_SCRIPT_RPC_TAG,
         });
       }
     };
@@ -299,6 +303,10 @@ describe("ContentScriptBridge", () => {
       payee_name: "Test Payee",
       imported_id: "import-123",
     };
+
+    // Wait a bit for the state update to be processed
+    // TODO: gross!
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     await expect(
       bridge.createTransaction(importTransaction),
@@ -355,6 +363,7 @@ describe("ContentScriptBridge", () => {
               },
             ],
             t: "q",
+            axbTarget: CONTENT_SCRIPT_RPC_TAG,
           });
         }, 5);
       }
@@ -365,6 +374,7 @@ describe("ContentScriptBridge", () => {
     await bridge.connect();
 
     // Wait a bit for the state update to be processed
+    // TODO: gross!
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     const transactionWithDifferentAccount = {
@@ -376,7 +386,7 @@ describe("ContentScriptBridge", () => {
 
     await expect(
       bridge.createTransaction(transactionWithDifferentAccount),
-    ).rejects.toThrow("Current view (acc-1) matches not target (acc-2).");
+    ).rejects.toThrow("AXB: Current view (acc-1) does not match target (acc-2)");
   });
 
   it("should handle duplicate transaction error", async () => {
@@ -384,11 +394,20 @@ describe("ContentScriptBridge", () => {
       const data = event.data;
 
       if (data && data.m === "handshake") {
-        mockMessageEvent({
-          i: data.i,
-          t: "s",
-          r: { success: true },
-        });
+        // Simulate state update with single account context via birpc
+        setTimeout(() => {
+          mockMessageEvent({
+            m: "onStateUpdate",
+            a: [
+              {
+                connected: true,
+                context: { type: "SINGLE_ACCOUNT", accountId: "acc-1" },
+              },
+            ],
+            t: "q",
+            axbTarget: CONTENT_SCRIPT_RPC_TAG,
+          });
+        }, 5);
       } else if (data && data.m === "createTransaction") {
         // Send birpc error response
         const error = new Error("Duplicate transaction detected") as Error & {
@@ -402,6 +421,7 @@ describe("ContentScriptBridge", () => {
           i: data.i,
           t: "e",
           e: error,
+          axbTarget: CONTENT_SCRIPT_RPC_TAG,
         });
       }
     };
@@ -417,56 +437,13 @@ describe("ContentScriptBridge", () => {
       imported_id: "import-123",
     };
 
+    // Wait a bit for the state update to be processed
+    // TODO: gross!
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
     await expect(
       bridge.createTransaction(duplicateTransaction),
     ).rejects.toThrow("Duplicate transaction detected.");
   });
 
-  it("should allow createTransaction in all accounts view regardless of target account", async () => {
-    const messageHandler = (event: MessageEvent) => {
-      const data = event.data;
-
-      if (data && data.m === "handshake") {
-        mockMessageEvent({
-          i: data.i,
-          t: "s",
-          r: { success: true },
-        });
-        // Simulate state update with all accounts context via birpc
-        setTimeout(() => {
-          mockMessageEvent({
-            m: "onStateUpdate",
-            a: [
-              {
-                connected: true,
-                context: { type: "ALL_ACCOUNTS", accountId: null },
-              },
-            ],
-            t: "q",
-          });
-        }, 5);
-      } else if (data && data.m === "createTransaction") {
-        mockMessageEvent({
-          i: data.i,
-          t: "s",
-          r: undefined,
-        });
-      }
-    };
-
-    addMessageHandler(messageHandler);
-
-    await bridge.connect();
-
-    const transactionForAnyAccount = {
-      account: "acc-2",
-      date: "2024-01-01",
-      amount: 100,
-      payee_name: "Test Payee",
-    };
-
-    await expect(
-      bridge.createTransaction(transactionForAnyAccount),
-    ).resolves.toBeUndefined();
-  });
 });

@@ -4,6 +4,7 @@ import { vi } from "vitest";
 export default {
   runtime: {
     sendMessage: vi.fn().mockResolvedValue({ success: true, data: null }),
+    getURL: vi.fn().mockReturnValue("mocked://extension/src/content/injected-actual.js"),
     onMessage: {
       addListener: vi.fn(),
       removeListener: vi.fn(),
