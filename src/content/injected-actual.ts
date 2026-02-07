@@ -38,10 +38,17 @@ interface ActualProps {
   onCreatePayee?: (name: string) => Promise<string>;
 }
 
+// Extend Window interface for test flag
+declare global {
+  interface Window {
+    __AXB_DISABLE_AUTO_INIT__?: boolean;
+  }
+}
+
 /**
  * Returns React props to use to interact with the Actual Web App.
  */
-function findActualProps(): ActualProps | null {
+export function findActualProps(): ActualProps | null {
   const anchor = document.querySelector('div[data-testid="transaction-table"]');
   if (!anchor) {
     // With luck this just means we're not currently on a transactions page.
@@ -84,21 +91,94 @@ function findActualProps(): ActualProps | null {
   return null;
 }
 
+export function getTransactions(props: ActualProps | null): Transaction[] {
+  if (!props) {
+    throw new Error("AXB: Not connected");
+  }
+  return props.transactions || [];
+}
+
+export function getAccounts(props: ActualProps | null): Account[] {
+  if (!props) {
+    throw new Error("AXB: Not connected");
+  }
+  return props.accounts || [];
+}
+
+export async function updateTransaction(
+  props: ActualProps | null,
+  transaction: Transaction,
+  subtransactions?: Transaction[],
+  field?: string,
+): Promise<void> {
+  if (!props || !props.onSave) {
+    throw new Error("AXB: onSave not available");
+  }
+  await props.onSave(transaction, subtransactions, field);
+}
+
+export async function createTransaction(
+  props: ActualProps | null,
+  payload: ImportTransaction,
+): Promise<void> {
+  if (!props || !props.onAdd) {
+    throw new Error("AXB: onAdd not available");
+  }
+
+  if (payload.imported_id && isDuplicate(props, payload.imported_id)) {
+    const error = new Error(
+      "AXB: Duplicate transaction detected",
+    ) as Error & {
+      code: string;
+      importedId: string;
+    };
+    error.code = "DUPLICATE";
+    error.importedId = payload.imported_id;
+    throw error;
+  }
+  const {
+    account,
+    date,
+    amount,
+    payee,
+    notes,
+    imported_id,
+    imported_payee,
+    cleared,
+  } = payload;
+  const finalPayee =
+    payee ||
+    (payload.payee_name
+      ? await resolvePayee(props, payload.payee_name)
+      : undefined);
+
+  // TODO: Validate presence of more required fields
+  if (typeof payload.amount === "undefined") {
+    throw new Error("AXB: (createTransaction): amount missing");
+  }
+  const newTx: Partial<Transaction> = {
+    account,
+    date,
+    ...(amount !== undefined && { amount }),
+    ...(notes !== undefined && { notes }),
+    ...(finalPayee !== undefined && { payee: finalPayee }),
+    ...(imported_payee !== undefined && { imported_payee }),
+    ...(cleared !== undefined && { cleared }),
+  };
+  if (finalPayee !== undefined) newTx.payee = finalPayee;
+  if (imported_id !== undefined) newTx.imported_id = imported_id;
+  if (payload.category) newTx.category = payload.category;
+
+  await props.onAdd([newTx]);
+}
+
 const injectedActualRpc = {
   async getTransactions() {
-    const props = findActualProps();
-    if (!props) {
-      throw new Error("AXB: Not connected");
-    }
-    return props.transactions || [];
+    return getTransactions(findActualProps());
   },
 
   async getAccounts() {
-    const props = findActualProps();
-    if (!props) {
-      throw new Error("AXB: Not connected");
-    }
-    return props.accounts || [];
+    return getAccounts(findActualProps());
   },
 
   async updateTransaction(
@@ -106,63 +186,11 @@ const injectedActualRpc = {
     subtransactions?: Transaction[],
     field?: string,
   ) {
-    const props = findActualProps();
-    if (!props || !props.onSave) {
-      throw new Error("AXB: onSave not available");
-    }
-    await props.onSave(transaction, subtransactions, field);
+    return updateTransaction(findActualProps(), transaction, subtransactions, field);
   },
 
   async createTransaction(payload: ImportTransaction) {
-    const props = findActualProps();
-    if (!props || !props.onAdd) {
-      throw new Error("AXB: onAdd not available");
-    }
-
-    if (payload.imported_id && isDuplicate(props, payload.imported_id)) {
-      const error = new Error(
-        "AXB: Duplicate transaction detected",
-      ) as Error & {
-        code: string;
-        importedId: string;
-      };
-      error.code = "DUPLICATE";
-      error.importedId = payload.imported_id;
-      throw error;
-    }
-    const {
-      account,
-      date,
-      amount,
-      payee,
-      notes,
-      imported_id,
-      imported_payee,
-      cleared,
-    } = payload;
-    const finalPayee =
-      payee ||
-      (payload.payee_name
-        ? await resolvePayee(props, payload.payee_name)
-        : undefined);
-
-    // TODO: Validate presence of more required fields
-    if (typeof payload.amount === "undefined") {
-      throw new Error("AXB: (createTransaction): amount missing");
-    }
-    const newTx: Partial<Transaction> = {
-      account,
-      date,
-      ...(amount !== undefined && { amount }),
-      ...(notes !== undefined && { notes }),
-      ...(finalPayee !== undefined && { payee: finalPayee }),
-      ...(imported_id !== undefined && { imported_id }),
-      ...(imported_payee !== undefined && { imported_payee }),
-      ...(cleared !== undefined && { cleared }),
-    };
-    if (payload.category) newTx["category"] = payload.category;
-
-    await props.onAdd([newTx]);
+    return createTransaction(findActualProps(), payload);
   },
 } satisfies InjectedActualRpc; // TODO: I don't understand why we aren't exactly InjectedActualRpc
 
@@ -190,7 +218,7 @@ const rpc = createBirpc<ContentScriptRpc, InjectedActualRpc>(
   },
 );
 
-async function resolvePayee(
+export async function resolvePayee(
   props: ActualProps,
   name: string,
 ): Promise<string | undefined> {
@@ -214,7 +242,7 @@ async function resolvePayee(
   return undefined;
 }
 
-function isDuplicate(props: ActualProps, importedId: string): boolean {
+export function isDuplicate(props: ActualProps, importedId: string): boolean {
   if (!props.transactions || !importedId) return false;
   // TODO we should maintain a set of importedIds!
   return props.transactions.some(
@@ -222,7 +250,7 @@ function isDuplicate(props: ActualProps, importedId: string): boolean {
   );
 }
 
-function determineContext(): BridgeContext {
+export function determineContext(): BridgeContext {
   const pathname = window.location.pathname.replace("/$", "");
   const accountId = window.location.pathname.match(
     "^/accounts/([0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12})$",
@@ -248,30 +276,39 @@ function determineContext(): BridgeContext {
   return { type, accountId: null };
 }
 
-function poll() {
+async function poll() {
+  console.log("AXB: poll() called");
   const props = findActualProps();
   const currentlyConnected = !!props;
+  console.log("AXB: poll() - props found:", !!props, "connected:", currentlyConnected);
 
   const currentState: BridgeState = {
     connected: currentlyConnected,
     context: determineContext(),
   };
+  console.log("AXB: poll() - sending state update:", JSON.stringify(currentState));
 
-  rpc.onStateUpdate(currentState).catch((e) => {
+  await rpc.onStateUpdate(currentState).catch((e) => {
     const msg = e instanceof Error ? e.message : String(e);
     console.warn("AXB: Failed to send state update:", msg);
   });
+  console.log("AXB TEST: called rpc.onStateUpdate");
 }
 
-function init() {
+export async function init() {
   console.log("AXB: calling handshake...");
   rpc
     .handshake()
-    .then((result) => {
+    .then(async (result) => {
       console.log("AXB: handshake complete, result:", result);
-      poll();
-      // TODO: instead, push whenever state changes, which will only be on navigation AFAIK
-      window.setInterval(poll, 2000);
+      console.log("AXB: calling initial poll()");
+      await poll();
+      console.log("AXB: setting up interval with 2000ms");
+      const intervalId = window.setInterval(async () => {
+        console.log("AXB: interval triggered, calling poll()");
+        await poll();
+      }, 2000);
+      console.log("AXB: interval set up with ID:", intervalId);
     })
     .catch((e) => {
       const msg = e instanceof Error ? e.message : String(e);
@@ -281,4 +318,7 @@ function init() {
   console.log("AXB: ActualBridge: injected-actual:init complete.");
 }
 
-init();
+// Auto-initialize unless disabled (for testing)
+if (!window.__AXB_DISABLE_AUTO_INIT__) {
+  await init();
+}
