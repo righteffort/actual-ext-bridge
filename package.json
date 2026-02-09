@@ -1,54 +1,21 @@
 {
-  "name": "@righteffort/actual-ext-bridge",
+  "name": "actual-ext-bridge",
   "version": "0.0.1",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "description": "Library to facilitate browser extensions that interact with Actual Budget",
-  "author": "Ted Romer <tromer@gmail.com>",
+  "private": true,
+  "description": "Library for Actual Budget browser extensions",
+  "homepage": "https://github.com/righteffort/actual-ext-bridge",
+  "bugs": {
+    "url": "https://github.com/righteffort/actual-ext-bridge/issues/"
+  },
   "license": "MIT",
-  "keywords": [
-    "finance"
-  ],
-  "homepage": "https://github.com/righteffort/actual-ext-bridge#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/righteffort/actual-ext-bridge.git"
-  },
-  "bugs": {
-    "url": "https://github.com/righteffort/actual-ext-bridge/issues"
-  },
-  "type": "module",
-  "engines": {
-    "node": ">=20"
+    "url": "git@github.com:righteffort/actual-ext-bridge.git"
   },
   "packageManager": "yarn@4.11.0",
-  "scripts": {
-    "compile": "tsc",
-    "build": "yarn compile && vite build",
-    "clean": "rm -rf dist dist-cli",
-    "lint": "eslint {src,test}/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
-    "prettier": "prettier {src,test}/**/*.{js,ts} --check",
-    "prettier:fix": "prettier {src,test}/**/*.{js,ts} --write",
-    "test": "yarn vitest",
-    "test:cov": "yarn test run --coverage"
-  },
-  "devDependencies": {
-    "@types/jsdom": "^27",
-    "@types/node": "^25.1.0",
-    "@types/webextension-polyfill": "^0.12.4",
-    "@vitest/coverage-v8": "^4.0.18",
-    "eslint": "^9.39.2",
-    "jsdom": "^27.4.0",
-    "prettier": "^3.8.1",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.54.0",
-    "vite": "^7.3.1",
-    "vite-plugin-dts": "^4.5.4",
-    "vitest": "^4.0.18"
-  },
-  "dependencies": {
-    "birpc": "^4.0.0",
-    "webextension-polyfill": "^0.12.0"
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ]
   }
 }
