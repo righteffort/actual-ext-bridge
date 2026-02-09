@@ -8,6 +8,7 @@ export async function getBaseUrl(): Promise<string | null> {
   const result = await chrome.storage.sync.get(KEY_BASE_URL);
   // Ensure we return string or null, handling undefined from storage get
   const val = result[KEY_BASE_URL];
+  console.log(`THROMER getBaseUrl type=${typeof val} value=${val}`);
   if (typeof val === "string") {
     return val;
   }
@@ -15,6 +16,7 @@ export async function getBaseUrl(): Promise<string | null> {
 }
 
 export async function setBaseUrl(url: string): Promise<void> {
+  console.log(`THROMER setBaseUrl ${url}`);
   await chrome.storage.sync.set({ [KEY_BASE_URL]: url });
 }
 

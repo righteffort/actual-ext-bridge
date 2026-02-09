@@ -1,4 +1,4 @@
-import puppeteer, { Browser, Page, Target, WebWorker } from 'puppeteer';
+import puppeteer, { Browser, Page } from 'puppeteer';
 import { join } from 'path';
 
 export interface ExtensionTestSetup {
@@ -21,6 +21,7 @@ export async function setupExtensionTest(): Promise<ExtensionTestSetup> {
     ]
   });
 
+  /*
   // Mock chrome.permissions.request in extension context
   const targets = browser.targets();
   const extensionTarget = targets.find(target => target.type() === 'service_worker');
@@ -30,11 +31,12 @@ export async function setupExtensionTest(): Promise<ExtensionTestSetup> {
       await extensionPage.evaluateOnNewDocument(() => {
         (globalThis as any).chrome = (globalThis as any).chrome || {};
         (globalThis as any).chrome.permissions = {
-          request: () => Promise.resolve(true)
+          request: () => {console.log('THROMER mock called yay');Promise.resolve(true);}
         };
       });
     }
   }
+   */
 
   const page = await browser.newPage();
   const extensionId = await getExtensionId(browser);
@@ -44,7 +46,7 @@ export async function setupExtensionTest(): Promise<ExtensionTestSetup> {
 
 export async function getExtensionId(browser: Browser): Promise<string> {
   console.log(`waitForTarget`);
-  const workerTarget: Target = await browser.waitForTarget(
+  const workerTarget = await browser.waitForTarget(
     // Assumes that there is only one service worker created by the
     // extension and its URL ends with background.js.
     target =>
@@ -57,4 +59,25 @@ export async function getExtensionId(browser: Browser): Promise<string> {
     throw new Error(`Could not extract extension ID from ${url}`);
   }
   return match[1];
+}
+
+export async function mockPermissionsInSidepanel(browser: Browser) {
+  const targets = browser.targets();
+  const extensionId = await getExtensionId(browser);
+  const sidepanelTarget = targets.find(target => target.url() === `chrome-extension://${extensionId}/src/sidepanel/index.html`);
+  if (!sidepanelTarget) {
+    throw new Error('Sidepanel not found');
+  }
+  /*
+  hmm
+  const extensionPage = await extensionTarget.page();
+  if (extensionPage) {
+    await extensionPage.evaluateOnNewDocument(() => {
+      (globalThis as any).chrome = (globalThis as any).chrome || {};
+      (globalThis as any).chrome.permissions = {
+        request: () => {console.log('THROMER mock called yay');Promise.resolve(true);}
+      };
+    });
+  }
+   */
 }

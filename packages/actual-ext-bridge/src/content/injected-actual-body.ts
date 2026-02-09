@@ -20,6 +20,7 @@ import type {
 } from "../types";
 
 interface FiberNode {
+  props: Record<string, unknown>;
   memoizedProps: Record<string, unknown>;
   return?: FiberNode;
   stateNode?: unknown;
@@ -42,6 +43,7 @@ interface ActualProps {
  * Returns React props to use to interact with the Actual Web App.
  */
 export function findActualProps(): ActualProps | null {
+  console.log('AXB TEST findActualProps');
   const anchor = document.querySelector('div[data-testid="transaction-table"]');
   if (!anchor) {
     // With luck this just means we're not currently on a transactions page.
@@ -63,7 +65,17 @@ export function findActualProps(): ActualProps | null {
 
   let attempts = 0;
   while (fiber && attempts < 50) {
+    if (!fiber.props) {
+      console.log(`AXB test fiber.props=${fiber.props}`);
+    } else {
+      console.log(`AXB TEST fiber.props keys = ${JSON.stringify(Object.keys(fiber.props))}`);
+    }
     const props = fiber.memoizedProps as unknown as ActualProps;
+    if (!props) {
+      console.log(`AXB test props=${props}`);
+    } else {
+      console.log(`AXB TEST props keys = ${JSON.stringify(Object.keys(props))}`);
+    }
     if (
       props &&
       Array.isArray(props.transactions) &&
@@ -71,6 +83,7 @@ export function findActualProps(): ActualProps | null {
       Array.isArray(props.accounts) &&
       typeof props.onAdd === "function"
     ) {
+      console.log('AXB TEST findActualProps succeeded');
       return props;
     }
     if (fiber.return) {

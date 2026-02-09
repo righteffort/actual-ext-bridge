@@ -43,6 +43,7 @@ const mockAccounts: Account[] = [
 ];
 
 function TransactionTable() {
+  console.log('AIDER DEBUG TransactionTable function called');
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
 
   // This is the key function that the extension will call
@@ -81,6 +82,7 @@ function TransactionTable() {
   };
 
   useEffect(() => {
+    console.log('AIDER TEST supposed to attached transactions now');
     // Expose data globally for test access
     window.mockTransactions = transactions;
     window.mockAccounts = mockAccounts;
@@ -97,6 +99,9 @@ function TransactionTable() {
           memoizedProps: tableProps
         }
       };
+      console.log('AIDER TEST props attached');
+    } else {
+      console.log('AIDER TEST transaction table not found');
     }
   }, [transactions]);
 
@@ -123,6 +128,7 @@ function TransactionTable() {
 }
 
 export default function App() {
+  console.log('AIDER DEBUG App component called')
   return <TransactionTable />;
 }
 

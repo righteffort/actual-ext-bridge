@@ -54,7 +54,9 @@ export class ContentScriptBridge implements ActualBridge {
         this.notifyListeners();
       },
       handshake: async () => {
+	console.log('content script received handshake');
         handshakeResolve();
+	console.log('handshakeResolve returned');
         return { success: true };
       },
     };

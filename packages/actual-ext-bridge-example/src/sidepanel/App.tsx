@@ -72,7 +72,6 @@ export default function App() {
   const handleSaveConfig = async () => {
     try {
       const url = new URL(baseUrl).origin;
-      // Request permissions dynamically
       const granted = await chrome.permissions.request({
         origins: [`${url}/*`],
         permissions: ["scripting"]
