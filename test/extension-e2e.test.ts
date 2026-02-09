@@ -48,7 +48,10 @@ describe('Extension E2E Test', () => {
     // Configure the extension with our fake server URL
     await sidePanelPage.waitForSelector('input[placeholder*="actualbudget"]', { timeout: 5000 });
     await sidePanelPage.type('input[placeholder*="actualbudget"]', serverUrl);
-    await sidePanelPage.click('button:has-text("Save & Authorize")');
+    // Click Save & Authorize button using XPath
+    await sidePanelPage.waitForXPath('//button[contains(text(), "Save") and contains(text(), "Authorize")]');
+    const [saveButton] = await sidePanelPage.$x('//button[contains(text(), "Save") and contains(text(), "Authorize")]');
+    await saveButton.click();
     
     // Wait for connection status to show connected
     await sidePanelPage.waitForFunction(
@@ -66,8 +69,9 @@ describe('Extension E2E Test', () => {
       { timeout: 5000 }
     );
     
-    // Click the modify notes button
-    const modifyButton = await sidePanelPage.waitForSelector('button:has-text("Modify \'extension test update me\' notes")');
+    // Click the modify notes button using XPath to find button by text content
+    await sidePanelPage.waitForXPath('//button[contains(text(), "Modify") and contains(text(), "extension test update me")]');
+    const [modifyButton] = await sidePanelPage.$x('//button[contains(text(), "Modify") and contains(text(), "extension test update me")]');
     expect(modifyButton).toBeTruthy();
     
     await modifyButton.click();
