@@ -48,10 +48,19 @@ describe('Extension E2E Test', () => {
     // Configure the extension with our fake server URL
     await sidePanelPage.waitForSelector('input[placeholder*="actualbudget"]', { timeout: 5000 });
     await sidePanelPage.type('input[placeholder*="actualbudget"]', serverUrl);
-    // Click Save & Authorize button using XPath
-    await sidePanelPage.waitForXPath('//button[contains(text(), "Save") and contains(text(), "Authorize")]');
-    const [saveButton] = await sidePanelPage.$x('//button[contains(text(), "Save") and contains(text(), "Authorize")]');
-    await saveButton.click();
+    // Click Save & Authorize button by finding it with text content
+    await sidePanelPage.waitForFunction(
+      () => Array.from(document.querySelectorAll('button')).find(btn => 
+        btn.textContent?.includes('Save') && btn.textContent?.includes('Authorize')
+      ),
+      { timeout: 5000 }
+    );
+    await sidePanelPage.evaluate(() => {
+      const button = Array.from(document.querySelectorAll('button')).find(btn => 
+        btn.textContent?.includes('Save') && btn.textContent?.includes('Authorize')
+      );
+      if (button) button.click();
+    });
     
     // Wait for connection status to show connected
     await sidePanelPage.waitForFunction(
@@ -69,12 +78,25 @@ describe('Extension E2E Test', () => {
       { timeout: 5000 }
     );
     
-    // Click the modify notes button using XPath to find button by text content
-    await sidePanelPage.waitForXPath('//button[contains(text(), "Modify") and contains(text(), "extension test update me")]');
-    const [modifyButton] = await sidePanelPage.$x('//button[contains(text(), "Modify") and contains(text(), "extension test update me")]');
-    expect(modifyButton).toBeTruthy();
+    // Click the modify notes button by finding it with text content
+    await sidePanelPage.waitForFunction(
+      () => Array.from(document.querySelectorAll('button')).find(btn => 
+        btn.textContent?.includes('Modify') && btn.textContent?.includes('extension test update me')
+      ),
+      { timeout: 5000 }
+    );
     
-    await modifyButton.click();
+    const modifyButtonExists = await sidePanelPage.evaluate(() => {
+      const button = Array.from(document.querySelectorAll('button')).find(btn => 
+        btn.textContent?.includes('Modify') && btn.textContent?.includes('extension test update me')
+      );
+      if (button) {
+        button.click();
+        return true;
+      }
+      return false;
+    });
+    expect(modifyButtonExists).toBeTruthy();
     
     // Wait for success message
     await sidePanelPage.waitForFunction(
