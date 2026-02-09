@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { Browser, Page } from 'puppeteer';
 import { setupExtensionTest, type ExtensionTestSetup } from './utils/puppeteer-setup';
 import { startFakeActualServer, stopFakeServer, type FakeServerSetup } from './utils/test-helpers';
 

@@ -19,8 +19,9 @@
     ]
   },
   "scripts": {
-    "test:e2e": "vitest run test/extension-e2e.test.ts",
-    "test:e2e:watch": "vitest test/extension-e2e.test.ts"
+    "e2e:compile": "yarn tsc",
+    "e2e:test": "vitest run test/extension-e2e.test.ts",
+    "e2e:test:watch": "vitest test/extension-e2e.test.ts"
   },
   "devDependencies": {
     "@types/node": "^25.1.0",

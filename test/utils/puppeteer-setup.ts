@@ -1,4 +1,4 @@
-import puppeteer, { Browser, Page } from 'puppeteer';
+import puppeteer, { Browser, Page, Target, WebWorker } from 'puppeteer';
 import { join } from 'path';
 
 export interface ExtensionTestSetup {
@@ -8,7 +8,7 @@ export interface ExtensionTestSetup {
 }
 
 export async function setupExtensionTest(): Promise<ExtensionTestSetup> {
-  const headless = process.env.HEADLESS !== 'false';
+  const headless = process.env['HEADLESS'] !== 'false';
   const extensionPath = join(process.cwd(), 'packages/actual-ext-bridge-example/dist');
   
   const browser = await puppeteer.launch({
@@ -22,7 +22,7 @@ export async function setupExtensionTest(): Promise<ExtensionTestSetup> {
   });
 
   // Mock chrome.permissions.request in extension context
-  const targets = await browser.targets();
+  const targets = browser.targets();
   const extensionTarget = targets.find(target => target.type() === 'service_worker');
   if (extensionTarget) {
     const extensionPage = await extensionTarget.page();
@@ -43,17 +43,18 @@ export async function setupExtensionTest(): Promise<ExtensionTestSetup> {
 }
 
 export async function getExtensionId(browser: Browser): Promise<string> {
-  const targets = await browser.targets();
-  const extensionTarget = targets.find(target => 
-    target.type() === 'service_worker' && target.url().startsWith('chrome-extension://')
+  console.log(`waitForTarget`);
+  const workerTarget: Target = await browser.waitForTarget(
+    // Assumes that there is only one service worker created by the
+    // extension and its URL ends with background.js.
+    target =>
+      target.type() === 'service_worker' &&
+	target.url().endsWith('service-worker.js'),
   );
-  if (!extensionTarget) {
-    throw new Error('Extension not found');
-  }
-  const url = extensionTarget.url();
+  const url = workerTarget.url();
   const match = url.match(/chrome-extension:\/\/([a-z]+)\//);
-  if (!match) {
-    throw new Error('Could not extract extension ID');
+  if (!match?.[1]) {
+    throw new Error(`Could not extract extension ID from ${url}`);
   }
   return match[1];
 }
