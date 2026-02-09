@@ -17,5 +17,15 @@
     "packages": [
       "packages/*"
     ]
+  },
+  "scripts": {
+    "test:e2e": "vitest run test/extension-e2e.test.ts",
+    "test:e2e:watch": "vitest test/extension-e2e.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "puppeteer": "^23.11.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }
