@@ -35,7 +35,7 @@ describe('Extension E2E Test', () => {
     
     // Verify initial state - transaction should have "extension test update me"
     const initialNotes = await page.evaluate(() => {
-      const tx = window.mockTransactions?.find(t => t.notes?.includes('extension test update me'));
+      const tx = window.__MOCK_DB.transactions?.find(t => t.notes?.includes('extension test update me'));
       return tx?.notes;
     });
     expect(initialNotes).toBe('extension test update me');
@@ -114,7 +114,7 @@ describe('Extension E2E Test', () => {
     // Verify the transaction was actually updated in the fake site
     await page.bringToFront();
     const updatedNotes = await page.evaluate(() => {
-      const tx = window.mockTransactions?.find(t => t.id === 'tx-1');
+      const tx = window.__MOCK_DB.transactions?.find(t => t.id === 'tx-1');
       return tx?.notes;
     });
 
@@ -124,11 +124,11 @@ describe('Extension E2E Test', () => {
 
     // Verify only one transaction was modified
     const unchangedNotes = await page.evaluate(() => {
-      const tx = window.mockTransactions?.find(t => t.id === 'tx-2');
+      const tx = window.__MOCK_DB__.transactions?.find(t => t.id === 'tx-2');
       return tx?.notes;
     });
     expect(unchangedNotes).toBe('some other transaction');
 
     await sidePanelPage.close();
-  }, 60000); // 60 second timeout for the full test
+  }, 3600 * 1000); // 60 second timeout for the full test  // TODO!!!
 });

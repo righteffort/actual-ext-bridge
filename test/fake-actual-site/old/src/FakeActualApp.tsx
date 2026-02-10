@@ -90,6 +90,8 @@ function TransactionTable() {
 
     // Attach props to the DOM element for findActualProps to discover
     const tableElement = document.querySelector('[data-testid="transaction-table"]');
+    /*
+    why don't we get all this stuff for free?
     if (tableElement) {
       // Create fake React Fiber structure
       const fiberKey = '__reactFiber$' + Math.random().toString(36).substr(2, 9);
@@ -103,6 +105,7 @@ function TransactionTable() {
     } else {
       console.log('AIDER TEST transaction table not found');
     }
+     */
   }, [transactions]);
 
   return (

@@ -65,11 +65,6 @@ export function findActualProps(): ActualProps | null {
 
   let attempts = 0;
   while (fiber && attempts < 50) {
-    if (!fiber.props) {
-      console.log(`AXB test fiber.props=${fiber.props}`);
-    } else {
-      console.log(`AXB TEST fiber.props keys = ${JSON.stringify(Object.keys(fiber.props))}`);
-    }
     const props = fiber.memoizedProps as unknown as ActualProps;
     if (!props) {
       console.log(`AXB test props=${props}`);
