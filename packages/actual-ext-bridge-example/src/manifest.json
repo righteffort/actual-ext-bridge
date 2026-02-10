@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Actual Budget Transaction Details",
+  "description": "Proof of Concept Client for Actual Bridge Library",
+  "permissions": ["storage", "sidePanel", "scripting"],
+  "optional_host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/connector.ts"],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "action": {
+    "default_title": "Open Transaction Details"
+  }
+}

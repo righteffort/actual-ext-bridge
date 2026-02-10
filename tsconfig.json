@@ -1,0 +1,13 @@
+{
+  "extends": "./packages/actual-ext-bridge/tsconfig.json",
+  "compilerOptions": {
+    "types": ["vitest/globals", "node"],
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": [
+    "test/**/*",
+    "packages/*/test/**/*"
+  ]
+}

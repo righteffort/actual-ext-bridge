@@ -1,0 +1,58 @@
+{
+  "name": "@righteffort/actual-ext-bridge-example",
+  "version": "0.0.1",
+  "description": "Example use of @righteffort/actual-ext-bridge",
+  "author": "Ted Romer <tromer@gmail.com>",
+  "license": "MIT",
+  "keywords": [
+    "finance"
+  ],
+  "homepage": "https://github.com/righteffort/action-details-ext-example#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/righteffort/action-details-ext-example.git"
+  },
+  "bugs": {
+    "url": "https://github.com/righteffort/action-details-ext-example/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "yarn@4.11.0",
+  "scripts": {
+    "compile": "yarn lint && tsc",
+    "dev": "vite",
+    "build": "yarn compile && vite build",
+    "dist": "rm -f dist.zip && yarn build && cd dist && zip -r ../dist.zip *",
+    "clean": "rm -rf dist",
+    "lint": "eslint {src,test}/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "prettier": "prettier {src,test}/**/*.{js,ts} --check",
+    "prettier:fix": "prettier {src,test}/**/*.{js,ts} --write",
+    "test": "yarn vitest"
+  },
+  "dependencies": {
+    "@righteffort/actual-ext-bridge": "workspace:*",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "@types/chrome": "^0.1.36",
+    "@types/node": "^25.1.0",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "@types/webextension-polyfill": "^0.12.4",
+    "@vitejs/plugin-react": "^5.1.2",
+    "eslint": "^9.35.0",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.43.0",
+    "vite": "^7.3.1",
+    "vite-plugin-static-copy": "^3.2.0",
+    "vite-plugin-web-extension": "^4.5.0",
+    "vitest": "^4.0.18",
+    "webextension-polyfill": "^0.12.0"
+  }
+}
