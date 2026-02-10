@@ -19,9 +19,13 @@
     ]
   },
   "scripts": {
+    "bridge:build": "yarn workspace @righteffort/actual-ext-bridge build",
+    "example:build": "yarn workspace @righteffort/actual-ext-bridge-example build",
+    "build": "yarn bridge:build && yarn example:build",
     "e2e:compile": "yarn tsc",
-    "e2e:test": "vitest run test/extension-e2e.test.ts",
-    "e2e:test:watch": "vitest test/extension-e2e.test.ts"
+    "e2e:fake:build": "cd test/fake-actual-site && yarn build",
+    "e2e:test": "yarn e2e:fake:build && vitest run test/extension-e2e.test.ts",
+    "e2e:test:watch": "yarn e2e:fake:build && vitest test/extension-e2e.test.ts"
   },
   "devDependencies": {
     "@types/node": "^25.1.0",

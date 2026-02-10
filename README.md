@@ -4,6 +4,5 @@
 
 ```
 yarn install
-yarn workspace @righteffort/actual-ext-bridge build
-yarn workspace @righteffort/actual-ext-bridge-example build
+yarn build
 ```
